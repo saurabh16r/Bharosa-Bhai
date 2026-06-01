@@ -10,7 +10,7 @@ import { ProtectionTab } from "@/components/dashboard/ProtectionTab";
 import { LifeJourneyTab } from "@/components/dashboard/LifeJourneyTab";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { ArrowLeft, User as UserIcon, Phone, Mail, MapPin } from "lucide-react";
-import { calculateMetrics } from "@/lib/scoring";
+import { calculateDashboardMetrics } from "@/lib/scoring";
 
 export default function UserProfile() {
   const { id } = useParams();
@@ -71,7 +71,7 @@ export default function UserProfile() {
   };
 
   // Recalculate metrics on the fly based on the raw DB answers
-  const metrics = testResult ? calculateMetrics(answers, userDetails) : null;
+  const metrics = testResult ? calculateDashboardMetrics(answers, userDetails) : null;
 
   return (
     <div className="animate-in fade-in duration-500 pb-20">

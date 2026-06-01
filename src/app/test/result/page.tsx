@@ -140,7 +140,7 @@ export default function ResultDashboard() {
                   : "border-transparent text-[#B5B5B5] hover:text-white hover:border-[rgba(255,255,255,0.2)]"
               }`}
             >
-              {React.cloneElement(tab.icon, { className: activeTab === tab.id ? "text-[#F7B500]" : "text-[#B5B5B5]" })}
+              {React.cloneElement(tab.icon as any, { className: activeTab === tab.id ? "text-[#F7B500]" : "text-[#B5B5B5]" })}
               {tab.id}
             </button>
           ))}
@@ -158,7 +158,7 @@ export default function ResultDashboard() {
         {activeTab !== "Overview" && activeTab !== "Retirement" && activeTab !== "Goals" && activeTab !== "Protection" && activeTab !== "Life Journey" && (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-6 border border-[rgba(255,255,255,0.08)]">
-               {React.cloneElement(tabs.find(t => t.id === activeTab)?.icon as React.ReactElement, { size: 32, className: "text-[#F7B500]" })}
+               {React.cloneElement(tabs.find(t => t.id === activeTab)?.icon as any, { size: 32, className: "text-[#F7B500]" })}
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">{activeTab} Details</h2>
             <p className="text-[#B5B5B5] max-w-md">Detailed charts, projections, and calculators for your {activeTab.toLowerCase()} plan are being prepared. This tab is currently a placeholder.</p>

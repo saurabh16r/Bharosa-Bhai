@@ -7,7 +7,7 @@ import { useTestStore } from "@/store/useTestStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, GraduationCap, HeartHandshake, Plane, Home, Activity } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, GraduationCap, HeartHandshake, Plane, Home, Activity, Car } from "lucide-react";
 
 export default function TestPage() {
   const router = useRouter();

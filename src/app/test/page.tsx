@@ -16,6 +16,9 @@ export default function TestPage() {
 
   React.useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("test_saved");
+    }
   }, []);
 
   if (!mounted) return null;

@@ -44,7 +44,7 @@ export default function ResultDashboard() {
           .insert({
             full_name: userDetails.name,
             email: userDetails.email,
-            phone: answers.phone || null,
+            phone: userDetails.phone || null,
             city: userDetails.city || null,
             age: userDetails.age,
             retire_at: userDetails.retireAt

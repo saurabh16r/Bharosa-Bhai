@@ -195,7 +195,7 @@ export function RetirementTab({ user, answers }: RetirementTabProps) {
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#171717', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
                   itemStyle={{ color: '#FFF' }}
-                  formatter={(value: number) => [formatCur(value), '']}
+                  formatter={(value: any) => [formatCur(Number(value || 0)), '']}
                   labelFormatter={(label) => `Age ${label}`}
                 />
                 <Legend />

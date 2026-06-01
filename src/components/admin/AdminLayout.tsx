@@ -21,12 +21,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (isDemoMode) {
-        setUser({ email: "demo-admin@bharosabhai.com" });
-        setLoading(false);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session && pathname !== "/admin/login") {
         router.push("/admin/login");
@@ -40,6 +34,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
     if (!isDemoMode) {
       const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        // If logged in via hardcoded admin credentials, do not redirect
+        if (typeof window !== "undefined" && localStorage.getItem("admin_auth") === "true") {
+          setUser({ email: "bharosabhaii@gmail.com" });
+          return;
+        }
+
         if (!session && pathname !== "/admin/login") {
           router.push("/admin/login");
         } else {

@@ -49,11 +49,6 @@ export default function AdminLogin() {
     }
   };
 
-  const handleDemoBypass = () => {
-    // This allows the user to view the CRM UI without a real database
-    router.push("/admin");
-  };
-
   return (
     <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -114,17 +109,7 @@ export default function AdminLogin() {
               {!loading && <ArrowRight size={18} />}
             </button>
           </form>
-          
-          <div className="mt-6 pt-6 border-t border-[rgba(255,255,255,0.08)]">
-            <button 
-              type="button" 
-              onClick={handleDemoBypass}
-              className="w-full bg-[#121212] border border-[rgba(255,255,255,0.1)] hover:bg-white/[0.04] text-white font-medium py-3 px-4 rounded-lg transition-colors"
-            >
-              View Admin UI (Demo Bypass)
-            </button>
-            <p className="text-[10px] text-center text-[#737373] mt-3">Click this to view the dashboard UI without connecting a live database.</p>
-          </div>
+
         </Card>
       </div>
     </div>

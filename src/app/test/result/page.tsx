@@ -75,8 +75,8 @@ export default function ResultDashboard() {
 
         localStorage.setItem("test_saved", "true");
         console.log("Successfully saved assessment to Supabase CRM");
-      } catch (e) {
-        console.error("Failed to save to Supabase CRM:", e);
+      } catch (e: any) {
+        console.error("Failed to save to Supabase CRM:", e?.message || e?.details || e);
       }
     };
 

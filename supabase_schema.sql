@@ -77,6 +77,12 @@ CREATE POLICY "Allow public insert on leads" ON leads FOR INSERT WITH CHECK (tru
 CREATE POLICY "Allow public insert on discovery_calls" ON discovery_calls FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert on chat_history" ON chat_history FOR INSERT WITH CHECK (true);
 
+CREATE POLICY "Allow public select on users" ON users FOR SELECT USING (true);
+CREATE POLICY "Allow public select on test_results" ON test_results FOR SELECT USING (true);
+CREATE POLICY "Allow public select on leads" ON leads FOR SELECT USING (true);
+CREATE POLICY "Allow public select on discovery_calls" ON discovery_calls FOR SELECT USING (true);
+CREATE POLICY "Allow public select on chat_history" ON chat_history FOR SELECT USING (true);
+
 -- --- RLS Policies for Authenticated Admin Users (Full dashboard access) ---
 CREATE POLICY "Allow admin all actions on users" ON users FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow admin all actions on test_results" ON test_results FOR ALL TO authenticated USING (true);

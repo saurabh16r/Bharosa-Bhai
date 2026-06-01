@@ -151,7 +151,7 @@ export default function SIPCalculatorPage() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#171717', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff' }}
                       itemStyle={{ color: '#fff' }}
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value) => formatCurrency(Number(value || 0))}
                     />
                     <Area type="monotone" dataKey="Value" stroke="#F7B500" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
                     <Area type="monotone" dataKey="Invested" stroke="#B5B5B5" strokeWidth={2} fillOpacity={1} fill="url(#colorInv)" />

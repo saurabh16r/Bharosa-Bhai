@@ -35,6 +35,13 @@ export interface TestAnswers {
   // Step 5: Protection
   hasTermInsurance: boolean;
   hasHealthInsurance: boolean;
+  termInsuranceEnabled?: boolean;
+  termInsuranceCoverage?: number;
+  termInsuranceProvider?: string;
+  healthInsuranceEnabled?: boolean;
+  healthInsuranceCoverage?: number;
+  healthInsuranceType?: string;
+  healthInsuranceMembers?: string;
 }
 
 interface TestState {

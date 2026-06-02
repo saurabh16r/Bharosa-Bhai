@@ -99,11 +99,29 @@ function isStepValid(step: number, userDetails: any, answers: any) {
   if (step === 2) {
     return !!answers.monthlyIncome && answers.monthlyIncome > 0 && !!answers.incomeSource;
   }
+  if (step === 4) {
+    const termOk = answers.termInsuranceEnabled === false || 
+      (answers.termInsuranceEnabled === true && !!answers.termInsuranceCoverage && answers.termInsuranceCoverage > 0);
+    const healthOk = answers.healthInsuranceEnabled === false || 
+      (answers.healthInsuranceEnabled === true && !!answers.healthInsuranceCoverage && answers.healthInsuranceCoverage > 0);
+    return termOk && healthOk && (answers.termInsuranceEnabled !== undefined) && (answers.healthInsuranceEnabled !== undefined);
+  }
   return true; // other steps have defaults or optional fields
 }
 
 function StepContent({ step }: { step: number }) {
   const { answers, userDetails, setAnswer, setUserDetails } = useTestStore();
+
+  React.useEffect(() => {
+    if (step === 4) {
+      if (answers.termInsuranceEnabled === undefined && answers.hasTermInsurance !== undefined) {
+        setAnswer("termInsuranceEnabled", answers.hasTermInsurance);
+      }
+      if (answers.healthInsuranceEnabled === undefined && answers.hasHealthInsurance !== undefined) {
+        setAnswer("healthInsuranceEnabled", answers.hasHealthInsurance);
+      }
+    }
+  }, [step, answers.hasTermInsurance, answers.hasHealthInsurance, answers.termInsuranceEnabled, answers.healthInsuranceEnabled, setAnswer]);
 
   switch (step) {
     case 0:
@@ -355,27 +373,265 @@ function StepContent({ step }: { step: number }) {
             <p>Medical inflation in India is 14%. Without adequate health insurance, one hospital visit can wipe out years of savings.</p>
           </div>
 
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121212] flex items-center justify-between">
-              <div>
-                <h4 className="text-white font-medium mb-1">Term Life Insurance</h4>
-                <p className="text-xs text-[#B5B5B5]">Income replacement protection for family</p>
+          <div className="space-y-8">
+            {/* TERM INSURANCE */}
+            <div className="p-5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#121212] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-white font-bold text-base">Do you have Term Life Insurance?</h4>
+                  <p className="text-xs text-[#B5B5B5]">Income replacement protection for family</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-44">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnswer("termInsuranceEnabled", true);
+                      setAnswer("hasTermInsurance", true);
+                      if (!answers.termInsuranceCoverage) setAnswer("termInsuranceCoverage", 5000000);
+                    }}
+                    className={`py-2 rounded-lg font-bold text-sm transition-all border text-center ${
+                      answers.termInsuranceEnabled === true
+                        ? "border-[#F7B500] bg-[#F7B500]/10 text-white"
+                        : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnswer("termInsuranceEnabled", false);
+                      setAnswer("hasTermInsurance", false);
+                      setAnswer("termInsuranceCoverage", 0);
+                    }}
+                    className={`py-2 rounded-lg font-bold text-sm transition-all border text-center ${
+                      answers.termInsuranceEnabled === false
+                        ? "border-red-500 bg-red-500/10 text-white"
+                        : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
-              <SimpleToggle 
-                checked={!!answers.hasTermInsurance} 
-                onChange={(v) => setAnswer("hasTermInsurance", v)} 
-              />
+
+              <AnimatePresence>
+                {answers.termInsuranceEnabled === true && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4 pt-4 border-t border-[rgba(255,255,255,0.05)] overflow-hidden"
+                  >
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white">What is your current term insurance coverage?</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B5B5B5]">₹</span>
+                        <Input
+                          type="number"
+                          className="pl-8 bg-[#171717] border-[rgba(255,255,255,0.1)] text-white focus:border-[#F7B500]"
+                          placeholder="Enter coverage amount"
+                          value={answers.termInsuranceCoverage || ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setAnswer("termInsuranceCoverage", val);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick-select pills */}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: "₹10 Lakh", value: 1000000 },
+                        { label: "₹25 Lakh", value: 2500000 },
+                        { label: "₹50 Lakh", value: 5000000 },
+                        { label: "₹1 Crore", value: 10000000 },
+                      ].map((pill) => (
+                        <button
+                          key={pill.value}
+                          type="button"
+                          onClick={() => setAnswer("termInsuranceCoverage", pill.value)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            answers.termInsuranceCoverage === pill.value
+                              ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                              : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                          }`}
+                        >
+                          {pill.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnswer("termInsuranceCoverage", 0);
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                          ![1000000, 2500000, 5000000, 10000000].includes(answers.termInsuranceCoverage || 0) && (answers.termInsuranceCoverage || 0) > 0
+                            ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                            : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                        }`}
+                      >
+                        Custom Amount
+                      </button>
+                    </div>
+
+                    {/* Optional Provider */}
+                    <div className="space-y-2 pt-2">
+                      <label className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider">Insurance Provider (Optional)</label>
+                      <select
+                        className="w-full h-10 bg-[#171717] border border-[rgba(255,255,255,0.08)] rounded-md px-3 text-white outline-none focus:border-[#F7B500]"
+                        value={answers.termInsuranceProvider || ""}
+                        onChange={(e) => setAnswer("termInsuranceProvider", e.target.value)}
+                      >
+                        <option value="">Select Provider</option>
+                        {["LIC", "HDFC Life", "ICICI Prudential", "Max Life", "SBI Life", "Tata AIA", "Bajaj Allianz", "Other"].map((prov) => (
+                          <option key={prov} value={prov}>{prov}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121212] flex items-center justify-between">
-              <div>
-                <h4 className="text-white font-medium mb-1">Health Insurance</h4>
-                <p className="text-xs text-[#B5B5B5]">Medical emergency protection</p>
+            {/* HEALTH INSURANCE */}
+            <div className="p-5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#121212] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-white font-bold text-base">Do you have Health Insurance?</h4>
+                  <p className="text-xs text-[#B5B5B5]">Medical emergency protection</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-44">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnswer("healthInsuranceEnabled", true);
+                      setAnswer("hasHealthInsurance", true);
+                      if (!answers.healthInsuranceCoverage) setAnswer("healthInsuranceCoverage", 500000);
+                    }}
+                    className={`py-2 rounded-lg font-bold text-sm transition-all border text-center ${
+                      answers.healthInsuranceEnabled === true
+                        ? "border-[#F7B500] bg-[#F7B500]/10 text-white"
+                        : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnswer("healthInsuranceEnabled", false);
+                      setAnswer("hasHealthInsurance", false);
+                      setAnswer("healthInsuranceCoverage", 0);
+                    }}
+                    className={`py-2 rounded-lg font-bold text-sm transition-all border text-center ${
+                      answers.healthInsuranceEnabled === false
+                        ? "border-red-500 bg-red-500/10 text-white"
+                        : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
-              <SimpleToggle 
-                checked={!!answers.hasHealthInsurance} 
-                onChange={(v) => setAnswer("hasHealthInsurance", v)} 
-              />
+
+              <AnimatePresence>
+                {answers.healthInsuranceEnabled === true && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4 pt-4 border-t border-[rgba(255,255,255,0.05)] overflow-hidden"
+                  >
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white">What is your current health insurance coverage?</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B5B5B5]">₹</span>
+                        <Input
+                          type="number"
+                          className="pl-8 bg-[#171717] border-[rgba(255,255,255,0.1)] text-white focus:border-[#F7B500]"
+                          placeholder="Enter coverage amount"
+                          value={answers.healthInsuranceCoverage || ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setAnswer("healthInsuranceCoverage", val);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick-select pills */}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: "₹5 Lakh", value: 500000 },
+                        { label: "₹10 Lakh", value: 1000000 },
+                        { label: "₹20 Lakh", value: 2000000 },
+                        { label: "₹50 Lakh", value: 5000000 },
+                      ].map((pill) => (
+                        <button
+                          key={pill.value}
+                          type="button"
+                          onClick={() => setAnswer("healthInsuranceCoverage", pill.value)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            answers.healthInsuranceCoverage === pill.value
+                              ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                              : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                          }`}
+                        >
+                          {pill.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnswer("healthInsuranceCoverage", 0);
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                          ![500000, 1000000, 2000000, 5000000].includes(answers.healthInsuranceCoverage || 0) && (answers.healthInsuranceCoverage || 0) > 0
+                            ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                            : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                        }`}
+                      >
+                        Custom Amount
+                      </button>
+                    </div>
+
+                    {/* Optional Policy Type and Covered Members */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-2">
+                        <label className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider">Policy Type (Optional)</label>
+                        <select
+                          className="w-full h-10 bg-[#171717] border border-[rgba(255,255,255,0.08)] rounded-md px-3 text-white outline-none focus:border-[#F7B500]"
+                          value={answers.healthInsuranceType || ""}
+                          onChange={(e) => setAnswer("healthInsuranceType", e.target.value)}
+                        >
+                          <option value="">Select Policy Type</option>
+                          {["Individual", "Family Floater", "Employer Provided", "Individual + Employer", "Other"].map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider">Covering (Optional)</label>
+                        <select
+                          className="w-full h-10 bg-[#171717] border border-[rgba(255,255,255,0.08)] rounded-md px-3 text-white outline-none focus:border-[#F7B500]"
+                          value={answers.healthInsuranceMembers || ""}
+                          onChange={(e) => setAnswer("healthInsuranceMembers", e.target.value)}
+                        >
+                          <option value="">Select Covered Members</option>
+                          {["Self", "Self + Spouse", "Self + Family", "Parents Included"].map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

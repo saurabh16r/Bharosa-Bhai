@@ -92,35 +92,55 @@ export function OverviewTab({ metrics, user, answers }: OverviewTabProps) {
           <p className="text-xs font-bold text-[#B5B5B5] tracking-widest uppercase mb-1">Coverage Analysis</p>
           <h2 className="text-lg font-bold text-white mb-6">Insurance Gap vs. Current Coverage</h2>
           
-          <div className="space-y-6 flex-1">
-            <div>
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-white font-medium">Term Life Insurance</span>
-                <span className="text-red-500 font-bold">{Math.round((1 - (metrics.termInsuranceGap / (metrics.termInsuranceRequired || 1))) * 100)}% covered</span>
-              </div>
-              <div className="w-full h-2 bg-red-500/10 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 rounded-full" style={{ width: `${(1 - (metrics.termInsuranceGap / (metrics.termInsuranceRequired || 1))) * 100}%` }} />
-              </div>
-              <div className="flex justify-between text-[10px] text-[#B5B5B5] mt-2">
-                <span>Current: {formatCur(metrics.termInsuranceRequired - metrics.termInsuranceGap)}</span>
-                <span>Required: {formatCur(metrics.termInsuranceRequired)}</span>
-              </div>
-            </div>
+          {(() => {
+            const termEnabled = answers.termInsuranceEnabled ?? answers.hasTermInsurance ?? false;
+            const currentTermCover = termEnabled ? (answers.termInsuranceCoverage || 0) : 0;
+            const termPercent = metrics.termInsuranceRequired > 0 
+              ? Math.min(100, Math.round((currentTermCover / metrics.termInsuranceRequired) * 100)) 
+              : 100;
 
-            <div>
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-white font-medium">Health Insurance</span>
-                <span className="text-red-500 font-bold">{Math.round((1 - (metrics.healthInsuranceGap / (metrics.healthInsuranceRequired || 1))) * 100)}% covered</span>
+            const healthEnabled = answers.healthInsuranceEnabled ?? answers.hasHealthInsurance ?? false;
+            const currentHealthCover = healthEnabled ? (answers.healthInsuranceCoverage || 0) : 0;
+            const healthPercent = metrics.healthInsuranceRequired > 0 
+              ? Math.min(100, Math.round((currentHealthCover / metrics.healthInsuranceRequired) * 100)) 
+              : 100;
+
+            return (
+              <div className="space-y-6 flex-1">
+                <div>
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-white font-medium">Term Life Insurance</span>
+                    <span className={`${termPercent >= 100 ? 'text-green-500' : termPercent >= 50 ? 'text-[#F7B500]' : 'text-red-500'} font-bold`}>
+                      {termPercent}% covered
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
+                    <div className={`h-full ${termPercent >= 100 ? 'bg-green-500' : termPercent >= 50 ? 'bg-[#F7B500]' : 'bg-red-500'} rounded-full`} style={{ width: `${termPercent}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#B5B5B5] mt-2">
+                    <span>Current: {formatCur(currentTermCover)}</span>
+                    <span>Required: {formatCur(metrics.termInsuranceRequired)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-white font-medium">Health Insurance</span>
+                    <span className={`${healthPercent >= 100 ? 'text-green-500' : healthPercent >= 50 ? 'text-[#F7B500]' : 'text-red-500'} font-bold`}>
+                      {healthPercent}% covered
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
+                    <div className={`h-full ${healthPercent >= 100 ? 'bg-green-500' : healthPercent >= 50 ? 'bg-[#F7B500]' : 'bg-red-500'} rounded-full`} style={{ width: `${healthPercent}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#B5B5B5] mt-2">
+                    <span>Current: {formatCur(currentHealthCover)}</span>
+                    <span>Required: {formatCur(metrics.healthInsuranceRequired)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="w-full h-2 bg-red-500/10 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 rounded-full" style={{ width: `${(1 - (metrics.healthInsuranceGap / (metrics.healthInsuranceRequired || 1))) * 100}%` }} />
-              </div>
-              <div className="flex justify-between text-[10px] text-[#B5B5B5] mt-2">
-                <span>Current: {formatCur(metrics.healthInsuranceRequired - metrics.healthInsuranceGap)}</span>
-                <span>Required: {formatCur(metrics.healthInsuranceRequired)}</span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           <Button className="w-full mt-6 bg-[#0E0E0E] text-[#B5B5B5] hover:text-white border border-[rgba(255,255,255,0.08)]">
             <span className="text-green-500 mr-2">📞</span> Book a Discovery Call <ChevronRight size={16} className="ml-2" />

@@ -38,8 +38,8 @@ export function calculateDashboardMetrics(answers: Partial<TestAnswers>, user: P
   const emergencyFundGap = Math.max(0, emergencyFundRequired - emergencyFund);
 
   const termInsuranceRequired = monthlyIncome * 12 * 20; // 20x annual income
-  // Assume user has 0 if not specified, or some logic if they checked "yes"
-  const currentTermCover = answers.hasTermInsurance ? (termInsuranceRequired * 0.5) : 0; // Simplified assumption
+  const termInsuranceEnabled = answers.termInsuranceEnabled ?? answers.hasTermInsurance ?? false;
+  const currentTermCover = termInsuranceEnabled ? (answers.termInsuranceCoverage || 0) : 0;
   const termInsuranceGap = Math.max(0, termInsuranceRequired - currentTermCover);
 
   let healthInsuranceRequired = 1000000; // Base 10L
@@ -47,7 +47,9 @@ export function calculateDashboardMetrics(answers: Partial<TestAnswers>, user: P
   if ((answers.dependents || []).includes("Parents")) healthInsuranceRequired += 1000000;
   const numChildren = answers.numberOfChildren || 0;
   healthInsuranceRequired += (numChildren * 500000);
-  const currentHealthCover = answers.hasHealthInsurance ? (healthInsuranceRequired * 0.8) : 0; // Simplified
+  
+  const healthInsuranceEnabled = answers.healthInsuranceEnabled ?? answers.hasHealthInsurance ?? false;
+  const currentHealthCover = healthInsuranceEnabled ? (answers.healthInsuranceCoverage || 0) : 0;
   const healthInsuranceGap = Math.max(0, healthInsuranceRequired - currentHealthCover);
 
   // Retirement Math (Simplified FV)
@@ -74,8 +76,8 @@ export function calculateDashboardMetrics(answers: Partial<TestAnswers>, user: P
 
   // 2. Scoring (0-100 scales)
   let protectionScore = 0;
-  if (answers.hasTermInsurance && answers.hasHealthInsurance) protectionScore = 90;
-  else if (answers.hasTermInsurance || answers.hasHealthInsurance) protectionScore = 50;
+  if (termInsuranceEnabled && healthInsuranceEnabled) protectionScore = 90;
+  else if (termInsuranceEnabled || healthInsuranceEnabled) protectionScore = 50;
   else protectionScore = 10;
   if (emergencyFund >= emergencyFundRequired) protectionScore += 10;
 

@@ -178,8 +178,11 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
   const numChildren = answers.numberOfChildren || 0;
   const hasSpouse = deps.includes("Spouse");
   const hasParents = deps.includes("Parents");
-  const currentTermCover = answers.hasTermInsurance ? 5000000 : 0;
-  const currentHealthCover = answers.hasHealthInsurance ? 500000 : 0;
+  const termEnabled = answers.termInsuranceEnabled ?? answers.hasTermInsurance ?? false;
+  const currentTermCover = termEnabled ? (answers.termInsuranceCoverage || 0) : 0;
+  
+  const healthEnabled = answers.healthInsuranceEnabled ?? answers.hasHealthInsurance ?? false;
+  const currentHealthCover = healthEnabled ? (answers.healthInsuranceCoverage || 0) : 0;
   const baseExpenses = (answers.monthlyExpenses || 0) + (answers.monthlyEmi || 0);
   
   const spouseSupport = hasSpouse ? Math.round(baseExpenses * 0.5) : 0;
@@ -403,6 +406,9 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
         <View style={styles.card}>
           <Text style={styles.h2}>Term Life Insurance</Text>
           <Text style={styles.body}>Calculated using the income-replacement method (0.07 Safe Withdrawal Rate) to ensure your dependents' lifestyle is protected forever.</Text>
+          {answers.termInsuranceProvider && (
+            <Text style={{ ...styles.small, color: colors.muted, marginBottom: 5 }}>Insurance Provider: {answers.termInsuranceProvider}</Text>
+          )}
           
           <View style={{ marginTop: 10, marginBottom: 10 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -410,8 +416,12 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
                <Text style={styles.h3}>{formatCur(totalTermRequired)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+               <Text style={styles.small}>Current Cover</Text>
+               <Text style={styles.h3}>{formatCur(currentTermCover)}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
                <Text style={styles.small}>Current Gap</Text>
-               <Text style={{...styles.h3, color: colors.danger}}>{formatCur(termGap)}</Text>
+               <Text style={{...styles.h3, color: termGap > 0 ? colors.danger : colors.success}}>{formatCur(termGap)}</Text>
             </View>
           </View>
 
@@ -423,6 +433,16 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
         <View style={styles.card}>
           <Text style={styles.h2}>Health Insurance</Text>
           <Text style={styles.body}>Based on your age, city, and number of dependents. Upgrade to a comprehensive family floater.</Text>
+          {(answers.healthInsuranceType || answers.healthInsuranceMembers) && (
+            <View style={{ marginBottom: 5 }}>
+              {answers.healthInsuranceType && (
+                <Text style={{ ...styles.small, color: colors.muted }}>Policy Type: {answers.healthInsuranceType}</Text>
+              )}
+              {answers.healthInsuranceMembers && (
+                <Text style={{ ...styles.small, color: colors.muted, marginTop: 2 }}>Covering: {answers.healthInsuranceMembers}</Text>
+              )}
+            </View>
+          )}
           
           <View style={{ marginTop: 10, marginBottom: 10 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -430,8 +450,12 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
                <Text style={styles.h3}>{formatCur(healthRequired)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+               <Text style={styles.small}>Current Cover</Text>
+               <Text style={styles.h3}>{formatCur(currentHealthCover)}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
                <Text style={styles.small}>Current Gap</Text>
-               <Text style={{...styles.h3, color: colors.danger}}>{formatCur(healthGap)}</Text>
+               <Text style={{...styles.h3, color: healthGap > 0 ? colors.danger : colors.success}}>{formatCur(healthGap)}</Text>
             </View>
           </View>
 

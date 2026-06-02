@@ -18,8 +18,11 @@ export function ProtectionTab({ user, answers }: ProtectionTabProps) {
   const hasParents = deps.includes("Parents");
 
   // Editable Assumptions State
-  const [currentTermCover, setCurrentTermCover] = React.useState(answers.hasTermInsurance ? 5000000 : 0);
-  const [currentHealthCover, setCurrentHealthCover] = React.useState(answers.hasHealthInsurance ? 500000 : 0);
+  const termEnabled = answers.termInsuranceEnabled ?? answers.hasTermInsurance ?? false;
+  const healthEnabled = answers.healthInsuranceEnabled ?? answers.hasHealthInsurance ?? false;
+
+  const [currentTermCover, setCurrentTermCover] = React.useState(termEnabled ? (answers.termInsuranceCoverage || 5000000) : 0);
+  const [currentHealthCover, setCurrentHealthCover] = React.useState(healthEnabled ? (answers.healthInsuranceCoverage || 500000) : 0);
   const [currentEmergencyFund, setCurrentEmergencyFund] = React.useState(answers.emergencyFund || 0);
   const [outstandingLoans, setOutstandingLoans] = React.useState(0);
 
@@ -143,6 +146,11 @@ export function ProtectionTab({ user, answers }: ProtectionTabProps) {
                  <p className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider mb-2">Total Term Plan Required</p>
                  <h1 className="text-4xl font-bold text-white">{formatCur(totalTermRequired)}</h1>
                  <p className="text-sm text-[#B5B5B5] mt-2 leading-relaxed max-w-md">Calculated using the income-replacement method (0.07 safe withdrawal rate) to ensure your family's lifestyle is protected forever.</p>
+                 {answers.termInsuranceProvider && (
+                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-[#1E88FF]/10 text-[#1E88FF] border border-[#1E88FF]/20 rounded-lg text-xs font-semibold">
+                      <span>Provider: <strong>{answers.termInsuranceProvider}</strong></span>
+                    </div>
+                  )}
                </div>
                
                <div className="flex-1 space-y-4">
@@ -221,6 +229,17 @@ export function ProtectionTab({ user, answers }: ProtectionTabProps) {
             <div className="w-full h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden mb-6">
                <div className="h-full bg-[#1E88FF] rounded-full" style={{ width: `${healthCoveragePercent}%` }} />
             </div>
+
+            {(answers.healthInsuranceType || answers.healthInsuranceMembers) && (
+              <div className="mb-4 space-y-1.5 text-xs text-[#B5B5B5] bg-white/[0.02] border border-[rgba(255,255,255,0.05)] p-3 rounded-lg">
+                {answers.healthInsuranceType && (
+                  <p>Policy Type: <span className="text-white font-semibold">{answers.healthInsuranceType}</span></p>
+                )}
+                {answers.healthInsuranceMembers && (
+                  <p>Covering: <span className="text-white font-semibold">{answers.healthInsuranceMembers}</span></p>
+                )}
+              </div>
+            )}
 
             <div className="bg-[#1E88FF]/5 border border-[#1E88FF]/20 p-3 rounded text-xs text-[#1E88FF]">
               <div className="flex gap-2 items-start">

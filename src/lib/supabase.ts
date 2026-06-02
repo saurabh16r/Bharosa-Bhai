@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
+const fallbackUrl = 'https://mclkvuunzahktgtyccpk.supabase.co';
+const fallbackAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jbGt2dXVuemFoa3RndHljY3BrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMjgyOTYsImV4cCI6MjA5NTkwNDI5Nn0.Q1cJYjy_hgwlTTdesbvhmvj6HHrPHpC5f1ySd9ymkc8';
+
 const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-export const isDemoMode = !envUrl.startsWith('http');
-const supabaseUrl = isDemoMode ? 'https://placeholder-project.supabase.co' : envUrl;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
+const useFallback = !envUrl.startsWith('http');
+
+export const isDemoMode = false;
+const supabaseUrl = useFallback ? fallbackUrl : envUrl;
+const supabaseAnonKey = (useFallback || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) 
+  ? fallbackAnonKey 
+  : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

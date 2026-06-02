@@ -13,6 +13,7 @@ import { ProtectionTab } from "@/components/dashboard/ProtectionTab";
 import { LifeJourneyTab } from "@/components/dashboard/LifeJourneyTab";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 export default function ResultDashboard() {
   const router = useRouter();
@@ -107,9 +108,17 @@ export default function ResultDashboard() {
              <Button variant="ghost" className="p-0 h-auto hover:bg-transparent" onClick={() => router.push("/test")}>
                <ArrowLeft size={20} className="text-[#B5B5B5] hover:text-white" />
              </Button>
-             <div className="w-6 h-6 rounded bg-[#F7B500] flex items-center justify-center font-bold text-[#0E0E0E] text-xs shrink-0">B</div>
-             <h1 className="text-sm sm:text-base md:text-xl font-bold font-heading text-white break-words">
-               PlanYourWealth <span className="text-[#B5B5B5] font-normal mx-1 sm:mx-2">|</span> {userDetails.name}'s Financial Plan
+             <div className="relative w-8 h-8 overflow-hidden flex items-center justify-center shrink-0">
+                <Image 
+                  src="/images/logo.png" 
+                  alt="Bharosa Bhai Logo" 
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+             </div>
+             <h1 className="text-sm sm:text-base md:text-xl font-black font-heading text-white break-words">
+               Bharosa <span className="text-[#F7B500]">Bhai</span> <span className="text-[#B5B5B5] font-normal mx-1 sm:mx-2">|</span> {userDetails.name}'s Financial Plan
              </h1>
           </div>
           <div className="text-xs sm:text-sm text-[#B5B5B5] mt-1 ml-8 sm:ml-10">

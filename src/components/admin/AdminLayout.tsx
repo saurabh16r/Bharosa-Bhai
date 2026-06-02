@@ -11,6 +11,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Close sidebar drawer automatically on navigation
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -70,8 +76,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   const navItems = [
     { label: "Dashboard", href: "/admin", icon: <LayoutDashboard size={20} /> },
     { label: "Users & Leads", href: "/admin/users", icon: <Users size={20} /> },
@@ -79,11 +83,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={20} /> },
     { label: "Settings", href: "/admin/settings", icon: <Settings size={20} /> },
   ];
-
-  // Close sidebar drawer automatically on navigation
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [pathname]);
 
   const SidebarContent = () => (
     <>

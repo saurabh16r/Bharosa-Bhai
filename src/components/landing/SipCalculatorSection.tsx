@@ -69,16 +69,16 @@ export function SipCalculatorSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto items-stretch">
           
           {/* Controls Card */}
-          <Card className="lg:col-span-6 p-8 bg-[#FFFFFF] border border-[rgba(0,0,0,0.06)] shadow-md rounded-3xl flex flex-col justify-between space-y-8">
+          <Card className="lg:col-span-6 p-5 sm:p-8 bg-[#FFFFFF] border border-[rgba(0,0,0,0.06)] shadow-md rounded-3xl flex flex-col justify-between space-y-8">
             
             <div className="space-y-6">
               <h3 className="text-lg font-bold text-[#121212] uppercase tracking-wider mb-2">SIP Parameters</h3>
               
               {/* Slider 1: Monthly Investment */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-bold text-[#555555] uppercase tracking-wide">Monthly Investment</label>
-                  <div className="bg-[#1E88FF]/10 px-4 py-2 rounded-xl border border-[#1E88FF]/20 text-[#1E88FF] font-extrabold text-sm sm:text-base">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <label className="text-xs sm:text-sm font-bold text-[#555555] uppercase tracking-wide">Monthly Investment</label>
+                  <div className="w-fit bg-[#1E88FF]/10 px-4 py-2 rounded-xl border border-[#1E88FF]/20 text-[#1E88FF] font-extrabold text-sm sm:text-base">
                     ₹{monthlySip.toLocaleString('en-IN')}
                   </div>
                 </div>
@@ -98,9 +98,9 @@ export function SipCalculatorSection() {
 
               {/* Slider 2: Return Rate */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-bold text-[#555555] uppercase tracking-wide">Expected Return Rate (p.a)</label>
-                  <div className="bg-[#FF9F1A]/10 px-4 py-2 rounded-xl border border-[#FF9F1A]/20 text-[#FF9F1A] font-extrabold text-sm sm:text-base">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <label className="text-xs sm:text-sm font-bold text-[#555555] uppercase tracking-wide">Expected Return Rate (p.a)</label>
+                  <div className="w-fit bg-[#FF9F1A]/10 px-4 py-2 rounded-xl border border-[#FF9F1A]/20 text-[#FF9F1A] font-extrabold text-sm sm:text-base">
                     {returnRate}%
                   </div>
                 </div>
@@ -120,9 +120,9 @@ export function SipCalculatorSection() {
 
               {/* Slider 3: Time Period */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-bold text-[#555555] uppercase tracking-wide">Time Period</label>
-                  <div className="bg-[#22C55E]/10 px-4 py-2 rounded-xl border border-[#22C55E]/20 text-[#22C55E] font-extrabold text-sm sm:text-base">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <label className="text-xs sm:text-sm font-bold text-[#555555] uppercase tracking-wide">Time Period</label>
+                  <div className="w-fit bg-[#22C55E]/10 px-4 py-2 rounded-xl border border-[#22C55E]/20 text-[#22C55E] font-extrabold text-sm sm:text-base">
                     {duration} Years
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export function SipCalculatorSection() {
           </Card>
 
           {/* Projections Card */}
-          <Card className="lg:col-span-6 p-8 bg-[#FFFFFF] border border-[rgba(0,0,0,0.06)] shadow-md rounded-3xl flex flex-col justify-between">
+          <Card className="lg:col-span-6 p-5 sm:p-8 bg-[#FFFFFF] border border-[rgba(0,0,0,0.06)] shadow-md rounded-3xl flex flex-col justify-between">
             
             <div className="space-y-6">
               <h3 className="text-lg font-bold text-[#121212] uppercase tracking-wider">Future Projections</h3>
@@ -177,13 +177,13 @@ export function SipCalculatorSection() {
                   <Award size={16} />
                   Total Projected Wealth
                 </div>
-                <p className="text-3xl sm:text-4xl font-black font-heading">{formatCurrency(results.futureValue)}</p>
+                <p className="text-2xl sm:text-4xl font-black font-heading">{formatCurrency(results.futureValue)}</p>
               </div>
             </div>
 
             {/* Circular Ring and Percentage Chart */}
-            <div className="flex items-center gap-6 pt-6 border-t border-gray-100 mt-6 sm:mt-0">
-              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 pt-6 border-t border-gray-100 mt-6 sm:mt-0 text-center sm:text-left">
+              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center mx-auto sm:mx-0">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     className="text-gray-100"
@@ -213,12 +213,12 @@ export function SipCalculatorSection() {
               </div>
               
               <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#555555]">
-                  <div className="w-3 h-3 rounded bg-gray-200" />
+                <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-[#555555]">
+                  <div className="w-3 h-3 rounded bg-gray-200 shrink-0" />
                   <span>Your Principal Investment ({investedPercent}%)</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#FF9F1A]">
-                  <div className="w-3 h-3 rounded bg-[#FF9F1A]" />
+                <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-[#FF9F1A]">
+                  <div className="w-3 h-3 rounded bg-[#FF9F1A] shrink-0" />
                   <span>Compounded Interest Wealth Gained ({returnPercent}%)</span>
                 </div>
               </div>

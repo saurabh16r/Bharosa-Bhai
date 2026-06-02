@@ -52,7 +52,7 @@ export default function TestPage() {
       </div>
 
       <div className="w-full max-w-2xl">
-        <Card className="p-8 md:p-10 relative overflow-hidden bg-[#171717] border-[rgba(255,255,255,0.08)] shadow-2xl">
+        <Card className="p-5 sm:p-8 md:p-10 relative overflow-hidden bg-[#171717] border-[rgba(255,255,255,0.08)] shadow-2xl">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}

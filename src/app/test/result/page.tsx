@@ -100,27 +100,29 @@ export default function ResultDashboard() {
     <div className="fixed inset-0 z-50 bg-[#0A0A0A] overflow-y-auto text-white flex flex-col">
       
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#0E0E0E] border-b border-[rgba(255,255,255,0.08)] px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <header className="sticky top-0 z-40 bg-[#0E0E0E] border-b border-[rgba(255,255,255,0.08)] px-4 sm:px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
         
-        <div className="flex flex-col">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col w-full md:w-auto">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
              <Button variant="ghost" className="p-0 h-auto hover:bg-transparent" onClick={() => router.push("/test")}>
                <ArrowLeft size={20} className="text-[#B5B5B5] hover:text-white" />
              </Button>
-             <div className="w-6 h-6 rounded bg-[#F7B500] flex items-center justify-center font-bold text-[#0E0E0E] text-xs">B</div>
-             <h1 className="text-xl font-bold font-heading">PlanYourWealth <span className="text-[#B5B5B5] font-normal mx-2">|</span> {userDetails.name}'s Financial Plan</h1>
+             <div className="w-6 h-6 rounded bg-[#F7B500] flex items-center justify-center font-bold text-[#0E0E0E] text-xs shrink-0">B</div>
+             <h1 className="text-sm sm:text-base md:text-xl font-bold font-heading text-white break-words">
+               PlanYourWealth <span className="text-[#B5B5B5] font-normal mx-1 sm:mx-2">|</span> {userDetails.name}'s Financial Plan
+             </h1>
           </div>
-          <div className="text-sm text-[#B5B5B5] mt-1 ml-10">
+          <div className="text-xs sm:text-sm text-[#B5B5B5] mt-1 ml-8 sm:ml-10">
             Age {userDetails.age} • {userDetails.city || 'India'} • Retiring at {userDetails.retireAt}
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" className="gap-2 text-[#B5B5B5] hover:text-white border border-[rgba(255,255,255,0.08)] bg-[#121212]">
-            <Edit size={16} /> Edit Details
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
+          <Button variant="ghost" className="gap-2 text-[#B5B5B5] hover:text-white border border-[rgba(255,255,255,0.08)] bg-[#121212] text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <Edit size={14} /> Edit Details
           </Button>
-          <Button variant="ghost" className="gap-2 text-[#B5B5B5] hover:text-white border border-[rgba(255,255,255,0.08)] bg-[#121212]">
-            <Mail size={16} /> Email Report
+          <Button variant="ghost" className="gap-2 text-[#B5B5B5] hover:text-white border border-[rgba(255,255,255,0.08)] bg-[#121212] text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <Mail size={14} /> Email Report
           </Button>
           <DownloadPDFButton metrics={metrics} user={userDetails} answers={answers} />
         </div>

@@ -37,13 +37,13 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 z-50">
-          <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-[#F7B500] to-[#FF9F1A] p-[1.5px] overflow-hidden flex items-center justify-center border border-white/10 shrink-0 shadow-inner">
+          <div className="relative w-10 h-10 overflow-hidden flex items-center justify-center shrink-0">
             <Image 
-              src="/images/crossed_arms.png" 
-              alt="Bharosa Bhai" 
-              width={26}
-              height={26}
-              className="object-contain translate-y-[2px]"
+              src="/images/logo.png" 
+              alt="Bharosa Bhai Logo" 
+              width={40}
+              height={40}
+              className="object-contain"
             />
           </div>
           <span className="font-heading font-black text-xl text-white tracking-wide">

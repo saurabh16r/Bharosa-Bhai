@@ -1,6 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Globe, Mail, Phone, MapPin } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -9,11 +10,19 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Info */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#F7B500] flex items-center justify-center font-bold text-[#0E0E0E]">
-                B
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-[#F7B500] to-[#FF9F1A] p-[1.5px] overflow-hidden flex items-center justify-center border border-white/10 shrink-0 shadow-inner">
+                <Image 
+                  src="/images/crossed_arms.png" 
+                  alt="Bharosa Bhai Logo" 
+                  width={26}
+                  height={26}
+                  className="object-contain translate-y-[2px]"
+                />
               </div>
-              <span className="font-heading font-bold text-xl text-white">Bharosa Bhai</span>
+              <span className="font-heading font-black text-xl text-white tracking-wide">
+                Bharosa <span className="text-[#F7B500]">Bhai</span>
+              </span>
             </Link>
             <p className="text-[#B5B5B5] text-sm leading-relaxed max-w-xs">
               Tumhara Personal Financial Dost. Helping Indians make smart, safe, and effective financial decisions without the complex jargon.

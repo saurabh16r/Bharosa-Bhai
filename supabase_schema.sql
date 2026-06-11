@@ -20,7 +20,19 @@ CREATE TABLE users (
   city TEXT,
   age INTEGER,
   retire_at INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  parents_selected BOOLEAN,
+  parents_receive_pension TEXT,
+  parent_monthly_pension INTEGER,
+  parent_monthly_support INTEGER,
+  parent_dependency_level TEXT,
+  parent_dependency_percentage INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT check_email_format CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+  CONSTRAINT check_phone_format CHECK (phone IS NULL OR (length(phone) = 10 AND phone ~ '^[6-9][0-9]{9}$')),
+  CONSTRAINT check_age CHECK (age >= 18 AND age <= 70),
+  CONSTRAINT check_retire_at CHECK (retire_at >= 40 AND retire_at <= 80 AND retire_at > age)
 );
 
 -- 2. Create Test Results Table
@@ -89,3 +101,19 @@ CREATE POLICY "Allow admin all actions on test_results" ON test_results FOR ALL 
 CREATE POLICY "Allow admin all actions on leads" ON leads FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow admin all actions on discovery_calls" ON discovery_calls FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow admin all actions on chat_history" ON chat_history FOR ALL TO authenticated USING (true);
+
+-- 6. Create System Settings Table
+DROP TABLE IF EXISTS system_settings CASCADE;
+CREATE TABLE system_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS for system_settings
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public select on system_settings" ON system_settings FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on system_settings" ON system_settings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update on system_settings" ON system_settings FOR UPDATE USING (true);
+CREATE POLICY "Allow admin all actions on system_settings" ON system_settings FOR ALL TO authenticated USING (true);
+

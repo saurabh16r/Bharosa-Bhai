@@ -3,6 +3,7 @@
 import * as React from "react";
 import { UserDetails, TestAnswers } from "@/store/useTestStore";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/utils";
 import { Shield, ShieldAlert, HeartPulse, Wallet, AlertTriangle, Users, Settings, Plus, Activity } from "lucide-react";
 
 interface ProtectionTabProps {
@@ -31,7 +32,7 @@ export function ProtectionTab({ user, answers }: ProtectionTabProps) {
   
   // Defaults based on typical distribution
   const [spouseSupport, setSpouseSupport] = React.useState(hasSpouse ? Math.round(baseExpenses * 0.5) : 0);
-  const [parentSupport, setParentSupport] = React.useState(hasParents ? Math.round(baseExpenses * 0.25) : 0);
+  const [parentSupport, setParentSupport] = React.useState(hasParents ? (answers.parentMonthlySupport || 0) : 0);
   const [childSupport, setChildSupport] = React.useState(numChildren > 0 ? Math.round((baseExpenses * 0.25) / numChildren) * numChildren : 0);
 
   const formatCur = (val: number) => {
@@ -199,6 +200,54 @@ export function ProtectionTab({ user, answers }: ProtectionTabProps) {
                 </div>
               )}
             </div>
+
+            {hasParents && (
+              <div className="mt-6 p-5 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121212] space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-[rgba(255,255,255,0.05)]">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Parent Dependency Analysis</h4>
+                    <p className="text-[11px] text-[#B5B5B5] mt-0.5">Detailed breakdown of parental financial dependency</p>
+                  </div>
+                  <span className={cn(
+                    "text-xs font-bold px-2.5 py-1 rounded-full",
+                    answers.parentDependencyLevel === "Fully Dependent" && "text-red-500 bg-red-500/10",
+                    answers.parentDependencyLevel === "High Dependency" && "text-orange-500 bg-orange-500/10",
+                    answers.parentDependencyLevel === "Moderate Dependency" && "text-[#F7B500] bg-[#F7B500]/10",
+                    (answers.parentDependencyLevel === "Low Dependency" || !answers.parentDependencyLevel) && "text-green-500 bg-green-500/10"
+                  )}>
+                    {answers.parentDependencyLevel || "Low Dependency"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-[10px] text-[#B5B5B5] uppercase font-bold tracking-wider">Monthly Support</span>
+                    <p className="text-base font-bold text-white mt-1">{formatCur(parentSupport)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#B5B5B5] uppercase font-bold tracking-wider">Parent Pension</span>
+                    <p className="text-base font-bold text-white mt-1">{formatCur(answers.parentMonthlyPension || 0)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#B5B5B5] uppercase font-bold tracking-wider">Dependency %</span>
+                    <p className="text-base font-bold text-[#F7B500] mt-1">{answers.parentDependencyPercentage || 0}%</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#B5B5B5] uppercase font-bold tracking-wider">Pension Status</span>
+                    <p className="text-base font-bold text-white mt-1">{answers.parentsReceivePension || "No"}</p>
+                  </div>
+                </div>
+
+                {(answers.parentMonthlyPension || 0) > 0 && (
+                  <div className="p-3 bg-[#22C55E]/5 border border-[#22C55E]/20 rounded-lg text-xs text-green-400 flex items-start gap-2">
+                    <span className="text-sm">💡</span>
+                    <p>
+                      Your parents' monthly pension of <strong>{formatCur(answers.parentMonthlyPension || 0)}</strong> reduces your required term life insurance cover by <strong>{formatCur(((answers.parentMonthlyPension || 0) * 12) / 0.07)}</strong>.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </div>
 

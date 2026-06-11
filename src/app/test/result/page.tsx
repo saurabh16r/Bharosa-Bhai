@@ -13,6 +13,7 @@ import { ProtectionTab } from "@/components/dashboard/ProtectionTab";
 import { LifeJourneyTab } from "@/components/dashboard/LifeJourneyTab";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { supabase } from "@/lib/supabase";
+import { sanitizeInput } from "@/lib/utils";
 import Image from "next/image";
 
 export default function ResultDashboard() {
@@ -39,16 +40,28 @@ export default function ResultDashboard() {
       if (!userDetails.email || !metrics) return;
 
       try {
+        // Sanitize details before saving
+        const sanitizedName = sanitizeInput(userDetails.name || "");
+        const sanitizedEmail = (userDetails.email || "").trim().toLowerCase();
+        const sanitizedPhone = (userDetails.phone || "").trim();
+        const sanitizedCity = sanitizeInput(userDetails.city || "");
+
         // 1. Insert User
         const { data: userData, error: userError } = await supabase
           .from("users")
           .insert({
-            full_name: userDetails.name,
-            email: userDetails.email,
-            phone: userDetails.phone || null,
-            city: userDetails.city || null,
+            full_name: sanitizedName,
+            email: sanitizedEmail,
+            phone: sanitizedPhone || null,
+            city: sanitizedCity || null,
             age: userDetails.age,
-            retire_at: userDetails.retireAt
+            retire_at: userDetails.retireAt,
+            parents_selected: answers.parentsSelected ?? false,
+            parents_receive_pension: answers.parentsReceivePension || null,
+            parent_monthly_pension: answers.parentMonthlyPension ?? 0,
+            parent_monthly_support: answers.parentMonthlySupport ?? 0,
+            parent_dependency_level: answers.parentDependencyLevel || null,
+            parent_dependency_percentage: answers.parentDependencyPercentage ?? 0
           })
           .select()
           .single();

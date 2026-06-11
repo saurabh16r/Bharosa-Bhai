@@ -19,7 +19,7 @@ export interface TestAnswers {
   goals: string[];
   
   // Step 3: Income & Expenses
-  incomeSource: "Salaried" | "Business" | "Professional" | "";
+  incomeSource: ("Salaried" | "Business" | "Professional")[];
   monthlyIncome: number;
   monthlyExpenses: number;
   monthlyEmi: number;
@@ -31,6 +31,12 @@ export interface TestAnswers {
   dependents: string[];
   numberOfChildren: number;
   childrenAges: number[];
+  parentsSelected?: boolean;
+  parentsReceivePension?: "Yes" | "No" | "";
+  parentMonthlyPension?: number;
+  parentMonthlySupport?: number;
+  parentDependencyLevel?: string;
+  parentDependencyPercentage?: number;
 
   // Step 5: Protection
   hasTermInsurance: boolean;
@@ -57,8 +63,15 @@ interface TestState {
 
 const defaultAnswers: Partial<TestAnswers> = {
   goals: ["Retirement"], // Required
+  incomeSource: [],
   dependents: [],
   childrenAges: [],
+  parentsSelected: false,
+  parentsReceivePension: "",
+  parentMonthlyPension: 0,
+  parentMonthlySupport: 0,
+  parentDependencyLevel: "",
+  parentDependencyPercentage: 0,
 };
 
 const defaultUserDetails: Partial<UserDetails> = {

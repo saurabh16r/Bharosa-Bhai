@@ -325,9 +325,9 @@ export function OverviewTab({ metrics, user, answers }: OverviewTabProps) {
                <h4 className="text-lg font-bold text-white">₹10,000/mo</h4>
              </div>
            )}
-           {/* You & Spouse */}
+           {/* Monthly Expenses */}
            <div className="min-w-[250px] p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 snap-start">
-             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">You & Spouse</p>
+             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">Monthly Expenses</p>
              <h4 className="text-lg font-bold text-white">{formatCur(answers.monthlyExpenses || 0)}/mo</h4>
            </div>
            {/* Children */}

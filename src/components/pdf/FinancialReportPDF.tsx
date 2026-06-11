@@ -186,7 +186,7 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
   const baseExpenses = (answers.monthlyExpenses || 0) + (answers.monthlyEmi || 0);
   
   const spouseSupport = hasSpouse ? Math.round(baseExpenses * 0.5) : 0;
-  const parentSupport = hasParents ? Math.round(baseExpenses * 0.25) : 0;
+  const parentSupport = hasParents ? (answers.parentMonthlySupport || 0) : 0;
   const childSupport = numChildren > 0 ? Math.round((baseExpenses * 0.25) / numChildren) * numChildren : 0;
 
   const parentCoverRequired = parentSupport > 0 ? (parentSupport * 12) / 0.07 : 0;
@@ -429,6 +429,37 @@ export const FinancialReportPDF = ({ metrics, user, answers }: Props) => {
             <View style={{ ...styles.gapBarFill, backgroundColor: colors.danger, width: `${(termGap / (totalTermRequired || 1)) * 100}%` }} />
           </View>
         </View>
+
+        {hasParents && (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Parent Dependency Analysis</Text>
+            <View style={{ ...styles.row, marginBottom: 8 }}>
+               <View style={styles.col}>
+                  <Text style={styles.small}>Monthly Support</Text>
+                  <Text style={styles.h3}>{formatCur(parentSupport)}</Text>
+               </View>
+               <View style={styles.col}>
+                  <Text style={styles.small}>Monthly Pension</Text>
+                  <Text style={styles.h3}>{formatCur(answers.parentMonthlyPension || 0)}</Text>
+               </View>
+               <View style={styles.col}>
+                  <Text style={styles.small}>Dependency Level</Text>
+                  <Text style={{ ...styles.h3, color: answers.parentDependencyPercentage && answers.parentDependencyPercentage > 50 ? colors.danger : colors.success }}>
+                    {answers.parentDependencyLevel || "Low Dependency"} ({answers.parentDependencyPercentage || 0}%)
+                  </Text>
+               </View>
+            </View>
+            {(answers.parentMonthlyPension || 0) > 0 ? (
+              <Text style={{ ...styles.body, fontSize: 10, color: colors.success, marginBottom: 0 }}>
+                💡 Your parents' pension of {formatCur(answers.parentMonthlyPension || 0)}/mo offsets dependency, reducing your required term cover by {formatCur(((answers.parentMonthlyPension || 0) * 12) / 0.07)}.
+              </Text>
+            ) : (
+              <Text style={{ ...styles.body, fontSize: 10, color: colors.muted, marginBottom: 0 }}>
+                Parents have no pension, making them fully dependent on your financial support for their retirement.
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.h2}>Health Insurance</Text>

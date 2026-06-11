@@ -7,12 +7,17 @@ import { useTestStore } from "@/store/useTestStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, GraduationCap, HeartHandshake, Plane, Home, Activity, Car } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, GraduationCap, HeartHandshake, Plane, Home, Activity, Car, AlertCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { validatePhone, validateEmail, sanitizeInput, cn } from "@/lib/utils";
 
 export default function TestPage() {
   const router = useRouter();
   const { currentStep, answers, userDetails, setAnswer, setUserDetails, nextStep, prevStep } = useTestStore();
   const [mounted, setMounted] = React.useState(false);
+
+  const [checkingDuplicates, setCheckingDuplicates] = React.useState(false);
+  const [duplicateErrors, setDuplicateErrors] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     setMounted(true);
@@ -23,13 +28,89 @@ export default function TestPage() {
 
   if (!mounted) return null;
 
-  const handleNext = () => {
-    if (currentStep === 4) {
+  const handleNext = async () => {
+    if (currentStep === 0) {
+      setCheckingDuplicates(true);
+      setDuplicateErrors({});
+      
+      try {
+        // 1. Fetch system settings to see if duplicate check is overridden
+        let checkDuplicatesEnabled = true;
+        try {
+          const { data: settingData } = await supabase
+            .from("system_settings")
+            .select("value")
+            .eq("key", "platform_settings")
+            .maybeSingle();
+          if (settingData && settingData.value) {
+            checkDuplicatesEnabled = settingData.value.blockDuplicates !== false;
+          } else {
+            // Check localStorage fallback
+            const local = localStorage.getItem("platform_settings");
+            if (local) {
+              const parsed = JSON.parse(local);
+              checkDuplicatesEnabled = parsed.blockDuplicates !== false;
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to fetch settings from Supabase, checking localStorage fallback", err);
+          const local = localStorage.getItem("platform_settings");
+          if (local) {
+            const parsed = JSON.parse(local);
+            checkDuplicatesEnabled = parsed.blockDuplicates !== false;
+          }
+        }
+
+        if (checkDuplicatesEnabled) {
+          const emailToCheck = (userDetails.email || "").trim().toLowerCase();
+          const phoneToCheck = (userDetails.phone || "").trim();
+
+          let errors: Record<string, string> = {};
+
+          if (emailToCheck) {
+            const { data: emailExists } = await supabase
+              .from("users")
+              .select("id")
+              .eq("email", emailToCheck)
+              .limit(1);
+
+            if (emailExists && emailExists.length > 0) {
+              errors.email = "This email has already completed the assessment.";
+            }
+          }
+
+          if (phoneToCheck) {
+            const { data: phoneExists } = await supabase
+              .from("users")
+              .select("id")
+              .eq("phone", phoneToCheck)
+              .limit(1);
+
+            if (phoneExists && phoneExists.length > 0) {
+              errors.phone = "This mobile number is already registered.";
+            }
+          }
+
+          if (Object.keys(errors).length > 0) {
+            setDuplicateErrors(errors);
+            setCheckingDuplicates(false);
+            return; // Block step transition
+          }
+        }
+      } catch (err) {
+        console.error("Error performing duplicate checks:", err);
+      } finally {
+        setCheckingDuplicates(false);
+      }
+      
+      nextStep();
+    } else if (currentStep === 4) {
       router.push("/test/result");
     } else {
       nextStep();
     }
   };
+
 
   const steps = [
     { title: "Personal Details", progress: 20 },
@@ -62,13 +143,17 @@ export default function TestPage() {
               transition={{ duration: 0.3 }}
               className="flex flex-col h-full"
             >
-              <StepContent step={currentStep} />
+              <StepContent 
+                step={currentStep} 
+                duplicateErrors={duplicateErrors} 
+                setDuplicateErrors={setDuplicateErrors} 
+              />
 
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-[rgba(255,255,255,0.08)]">
                 <Button
                   variant="ghost"
                   onClick={prevStep}
-                  disabled={currentStep === 0}
+                  disabled={currentStep === 0 || checkingDuplicates}
                   className="gap-2 text-[#B5B5B5] hover:text-white"
                 >
                   <ArrowLeft size={18} /> Back
@@ -77,10 +162,19 @@ export default function TestPage() {
                 <Button
                   onClick={handleNext}
                   size="lg"
-                  className="gap-2 px-8 bg-[#F7B500] text-black hover:bg-[#F7B500]/90 font-bold"
-                  disabled={!isStepValid(currentStep, userDetails, answers)}
+                  className="gap-2 px-8 bg-[#F7B500] text-black hover:bg-[#F7B500]/90 font-bold min-w-[140px] justify-center"
+                  disabled={!isStepValid(currentStep, userDetails, answers) || checkingDuplicates}
                 >
-                  {currentStep === 4 ? "Generate My Plan" : "Continue"} <ArrowRight size={18} />
+                  {checkingDuplicates ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Checking...
+                    </span>
+                  ) : (
+                    <>
+                      {currentStep === 4 ? "Generate My Plan" : "Continue"} <ArrowRight size={18} />
+                    </>
+                  )}
                 </Button>
               </div>
             </motion.div>
@@ -94,10 +188,32 @@ export default function TestPage() {
 // Extracted Validation Logic
 function isStepValid(step: number, userDetails: any, answers: any) {
   if (step === 0) {
-    return !!(userDetails.name && userDetails.phone && userDetails.phone.length >= 10 && userDetails.email && userDetails.email.includes("@") && userDetails.age >= 18 && userDetails.age <= 70 && userDetails.retireAt > userDetails.age);
+    const nameOk = !!(userDetails.name && userDetails.name.trim().length > 0);
+    const cityOk = !!(userDetails.city && userDetails.city.trim().length > 0);
+    const ageOk = typeof userDetails.age === 'number' && userDetails.age >= 18 && userDetails.age <= 70;
+    const retireOk = typeof userDetails.retireAt === 'number' && userDetails.retireAt >= 40 && userDetails.retireAt <= 80 && userDetails.retireAt > (userDetails.age || 0);
+    
+    const phoneError = validatePhone(userDetails.phone || "");
+    const emailError = validateEmail(userDetails.email || "");
+    
+    return nameOk && cityOk && ageOk && retireOk && !phoneError && !emailError;
   }
   if (step === 2) {
-    return !!answers.monthlyIncome && answers.monthlyIncome > 0 && !!answers.incomeSource;
+    return !!answers.monthlyIncome && answers.monthlyIncome > 0 && Array.isArray(answers.incomeSource) && answers.incomeSource.length > 0;
+  }
+  if (step === 3) {
+    const hasParents = (answers.dependents || []).includes("Parents");
+    if (hasParents) {
+      const pensionAnswer = answers.parentsReceivePension;
+      const pensionAmount = answers.parentMonthlyPension ?? 0;
+      const supportAmount = answers.parentMonthlySupport ?? 0;
+      
+      const pensionOk = pensionAnswer === "No" || (pensionAnswer === "Yes" && pensionAmount > 0);
+      const supportOk = supportAmount >= 0;
+      
+      return pensionOk && supportOk;
+    }
+    return true;
   }
   if (step === 4) {
     const termOk = answers.termInsuranceEnabled === false || 
@@ -109,8 +225,98 @@ function isStepValid(step: number, userDetails: any, answers: any) {
   return true; // other steps have defaults or optional fields
 }
 
-function StepContent({ step }: { step: number }) {
+// Validated Input wrapper
+function ValidatedInput({
+  label,
+  field,
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  onBlur,
+  error,
+  showError,
+  showSuccess,
+  className,
+  min,
+  max
+}: {
+  label: string;
+  field: string;
+  type?: string;
+  placeholder?: string;
+  value: any;
+  onChange: (val: any) => void;
+  onBlur?: () => void;
+  error: string | null;
+  showError: boolean;
+  showSuccess: boolean;
+  className?: string;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className={cn("space-y-2 relative", className)}>
+      <label className="text-sm text-[#B5B5B5]">{label}</label>
+      <div className="relative">
+        <Input
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => {
+            let val: any = e.target.value;
+            if (type === "number") {
+              val = e.target.value === "" ? "" : Number(e.target.value);
+            }
+            onChange(val);
+          }}
+          onBlur={onBlur}
+          className={cn(
+            "pr-10 transition-all duration-300",
+            showError && "border-red-500 focus-visible:ring-red-500/20",
+            showSuccess && "border-green-500 focus-visible:ring-green-500/20"
+          )}
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+          {showSuccess && <CheckCircle2 className="text-green-500 w-5 h-5 animate-in fade-in zoom-in duration-300" />}
+          {showError && <AlertCircle className="text-red-500 w-5 h-5 animate-in fade-in zoom-in duration-300" />}
+        </div>
+      </div>
+      {showError && error && (
+        <p className="text-red-500 text-xs mt-1 animate-in slide-in-from-top-1 duration-200">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function StepContent({ 
+  step, 
+  duplicateErrors = {}, 
+  setDuplicateErrors = () => {} 
+}: { 
+  step: number; 
+  duplicateErrors?: Record<string, string>; 
+  setDuplicateErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
   const { answers, userDetails, setAnswer, setUserDetails } = useTestStore();
+  
+  // Touched state to control when errors/success states are displayed
+  const [touched, setTouched] = React.useState<Record<string, boolean>>({});
+  const [incomeSourceTouched, setIncomeSourceTouched] = React.useState(false);
+
+  const toggleIncomeSource = (src: any) => {
+    setIncomeSourceTouched(true);
+    const current = answers.incomeSource || [];
+    let updated;
+    if (current.includes(src)) {
+      updated = current.filter(s => s !== src);
+    } else {
+      updated = [...current, src];
+    }
+    setAnswer("incomeSource", updated);
+  };
 
   React.useEffect(() => {
     if (step === 4) {
@@ -122,6 +328,73 @@ function StepContent({ step }: { step: number }) {
       }
     }
   }, [step, answers.hasTermInsurance, answers.hasHealthInsurance, answers.termInsuranceEnabled, answers.healthInsuranceEnabled, setAnswer]);
+
+  const getFieldError = (field: string, val: any): string | null => {
+    if (duplicateErrors && duplicateErrors[field]) {
+      return duplicateErrors[field];
+    }
+    
+    switch (field) {
+      case "name":
+        if (!val || !val.trim()) return "Full name is required";
+        return null;
+      case "phone":
+        return validatePhone(val || "");
+      case "email":
+        return validateEmail(val || "");
+      case "age":
+        if (val === undefined || val === null || val === "") return "Age is required";
+        const ageNum = Number(val);
+        if (isNaN(ageNum) || ageNum < 18 || ageNum > 70) return "Age must be between 18 and 70";
+        return null;
+      case "city":
+        if (!val || !val.trim()) return "City is required";
+        return null;
+      case "retireAt":
+        if (val === undefined || val === null || val === "") return "Retirement age is required";
+        const retireNum = Number(val);
+        if (isNaN(retireNum) || retireNum < 40 || retireNum > 80) return "Retirement age must be between 40 and 80";
+        if (userDetails.age && retireNum <= Number(userDetails.age)) return "Retirement age must be greater than current age";
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const shouldShowError = (field: string, val: any) => {
+    if (duplicateErrors && duplicateErrors[field]) return true;
+    if (!touched[field]) return false;
+    return !!getFieldError(field, val);
+  };
+
+  const shouldShowSuccess = (field: string, val: any) => {
+    if (duplicateErrors && duplicateErrors[field]) return false;
+    if (val === undefined || val === null || val === "") return false;
+    if (typeof val === "string" && !val.trim()) return false;
+    if (!touched[field] && (val === undefined || val === "")) return false;
+    return !getFieldError(field, val);
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    let sanitizedVal = value;
+    if (typeof value === "string") {
+      if (field === "email") {
+        sanitizedVal = value.toLowerCase().replace(/\s/g, "");
+      } else {
+        sanitizedVal = sanitizeInput(value);
+      }
+    }
+    
+    setUserDetails(field as any, sanitizedVal);
+    setTouched(prev => ({ ...prev, [field]: true }));
+    if (duplicateErrors && duplicateErrors[field]) {
+      setDuplicateErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
   switch (step) {
     case 0:
@@ -138,30 +411,87 @@ function StepContent({ step }: { step: number }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm text-[#B5B5B5]">Full Name *</label>
-              <Input placeholder="Rajesh Kumar" value={userDetails.name || ""} onChange={(e) => setUserDetails("name", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-[#B5B5B5]">Phone Number *</label>
-              <Input type="tel" placeholder="9876543210" value={userDetails.phone || ""} onChange={(e) => setUserDetails("phone", e.target.value)} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm text-[#B5B5B5]">Email Address *</label>
-              <Input type="email" placeholder="rajesh@example.com" value={userDetails.email || ""} onChange={(e) => setUserDetails("email", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-[#B5B5B5]">Current Age *</label>
-              <Input type="number" min={18} max={70} placeholder="30" value={userDetails.age || ""} onChange={(e) => setUserDetails("age", Number(e.target.value))} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-[#B5B5B5]">City</label>
-              <Input placeholder="Mumbai" value={userDetails.city || ""} onChange={(e) => setUserDetails("city", e.target.value)} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm text-[#B5B5B5]">Expected Retirement Age *</label>
-              <Input type="number" min={40} max={80} placeholder="60" value={userDetails.retireAt || ""} onChange={(e) => setUserDetails("retireAt", Number(e.target.value))} />
-            </div>
+            <ValidatedInput
+              label="Full Name *"
+              field="name"
+              placeholder="Rajesh Kumar"
+              value={userDetails.name || ""}
+              onChange={(val) => handleFieldChange("name", val)}
+              onBlur={() => handleBlur("name")}
+              error={getFieldError("name", userDetails.name)}
+              showError={shouldShowError("name", userDetails.name)}
+              showSuccess={shouldShowSuccess("name", userDetails.name)}
+            />
+            
+            <ValidatedInput
+              label="Phone Number *"
+              field="phone"
+              type="tel"
+              placeholder="9876543210"
+              value={userDetails.phone || ""}
+              onChange={(val) => handleFieldChange("phone", val)}
+              onBlur={() => handleBlur("phone")}
+              error={getFieldError("phone", userDetails.phone)}
+              showError={shouldShowError("phone", userDetails.phone)}
+              showSuccess={shouldShowSuccess("phone", userDetails.phone)}
+            />
+
+            <ValidatedInput
+              label="Email Address *"
+              field="email"
+              type="email"
+              placeholder="rajesh@example.com"
+              value={userDetails.email || ""}
+              className="md:col-span-2"
+              onChange={(val) => handleFieldChange("email", val)}
+              onBlur={() => handleBlur("email")}
+              error={getFieldError("email", userDetails.email)}
+              showError={shouldShowError("email", userDetails.email)}
+              showSuccess={shouldShowSuccess("email", userDetails.email)}
+            />
+
+            <ValidatedInput
+              label="Current Age *"
+              field="age"
+              type="number"
+              min={18}
+              max={70}
+              placeholder="30"
+              value={userDetails.age || ""}
+              onChange={(val) => handleFieldChange("age", val)}
+              onBlur={() => handleBlur("age")}
+              error={getFieldError("age", userDetails.age)}
+              showError={shouldShowError("age", userDetails.age)}
+              showSuccess={shouldShowSuccess("age", userDetails.age)}
+            />
+
+            <ValidatedInput
+              label="City *"
+              field="city"
+              placeholder="Mumbai"
+              value={userDetails.city || ""}
+              onChange={(val) => handleFieldChange("city", val)}
+              onBlur={() => handleBlur("city")}
+              error={getFieldError("city", userDetails.city)}
+              showError={shouldShowError("city", userDetails.city)}
+              showSuccess={shouldShowSuccess("city", userDetails.city)}
+            />
+
+            <ValidatedInput
+              label="Expected Retirement Age *"
+              field="retireAt"
+              type="number"
+              min={40}
+              max={80}
+              placeholder="60"
+              value={userDetails.retireAt || ""}
+              className="md:col-span-2"
+              onChange={(val) => handleFieldChange("retireAt", val)}
+              onBlur={() => handleBlur("retireAt")}
+              error={getFieldError("retireAt", userDetails.retireAt)}
+              showError={shouldShowError("retireAt", userDetails.retireAt)}
+              showSuccess={shouldShowSuccess("retireAt", userDetails.retireAt)}
+            />
           </div>
         </div>
       );
@@ -243,25 +573,35 @@ function StepContent({ step }: { step: number }) {
             <div className="space-y-3">
               <label className="text-sm text-white font-medium">Income Source *</label>
               <div className="grid grid-cols-3 gap-3">
-                {["Salaried", "Business", "Professional"].map(src => (
-                  <button
-                    key={src}
-                    onClick={() => setAnswer("incomeSource", src)}
-                    className={`p-3 rounded-lg border text-sm transition-colors ${
-                      answers.incomeSource === src
-                        ? 'border-[#1E88FF] bg-[#1E88FF]/10 text-white'
-                        : 'border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:bg-white/[0.02]'
-                    }`}
-                  >
-                    {src}
-                  </button>
-                ))}
+                {["Salaried", "Business", "Professional"].map(src => {
+                  const isSelected = (answers.incomeSource || []).includes(src as any);
+                  return (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => toggleIncomeSource(src)}
+                      className={`relative p-3 rounded-lg border text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
+                        isSelected
+                          ? 'border-[#1E88FF] bg-[#1E88FF]/10 text-white scale-[1.03] shadow-[0_0_15px_rgba(30,136,255,0.15)] font-bold'
+                          : 'border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:bg-white/[0.02] active:scale-95'
+                      }`}
+                    >
+                      {isSelected && <CheckCircle2 size={14} className="text-[#1E88FF] shrink-0" />}
+                      {src}
+                    </button>
+                  );
+                })}
               </div>
+              {incomeSourceTouched && (!answers.incomeSource || answers.incomeSource.length === 0) && (
+                <p className="text-red-500 text-xs mt-1 animate-in slide-in-from-top-1 duration-200">
+                  Please select at least one income source.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CurrencyInput label="Monthly Income *" value={answers.monthlyIncome} onChange={(v) => setAnswer("monthlyIncome", v)} />
-              <CurrencyInput label="You & Spouse Expenses" value={answers.monthlyExpenses} onChange={(v) => setAnswer("monthlyExpenses", v)} />
+              <CurrencyInput label="Monthly Expenses" description="Enter your total monthly household expenses." value={answers.monthlyExpenses} onChange={(v) => setAnswer("monthlyExpenses", v)} />
               <CurrencyInput label="Total Monthly EMIs" value={answers.monthlyEmi} onChange={(v) => setAnswer("monthlyEmi", v)} />
               <CurrencyInput label="Total Monthly SIPs" value={answers.monthlySip} onChange={(v) => setAnswer("monthlySip", v)} />
               <CurrencyInput label="Total Emergency Fund" value={answers.emergencyFund} onChange={(v) => setAnswer("emergencyFund", v)} />
@@ -275,11 +615,65 @@ function StepContent({ step }: { step: number }) {
       const depsList = ["Spouse", "Children", "Parents", "Siblings"];
       const toggleDep = (id: string) => {
         const current = answers.dependents || [];
-        if (current.includes(id)) setAnswer("dependents", current.filter(d => d !== id));
-        else setAnswer("dependents", [...current, id]);
+        let updated;
+        if (current.includes(id)) {
+          updated = current.filter(d => d !== id);
+        } else {
+          updated = [...current, id];
+        }
+        setAnswer("dependents", updated);
+
+        if (id === "Parents") {
+          const isSelectedNow = updated.includes("Parents");
+          setAnswer("parentsSelected", isSelectedNow);
+          if (!isSelectedNow) {
+            setAnswer("parentsReceivePension", "");
+            setAnswer("parentMonthlyPension", 0);
+            setAnswer("parentMonthlySupport", 0);
+            setAnswer("parentDependencyLevel", "");
+            setAnswer("parentDependencyPercentage", 0);
+          }
+        }
+      };
+
+      const computeParentDependency = (pension: number, support: number) => {
+        const total = pension + support;
+        const pct = total > 0 ? Math.round((support / total) * 100) : 0;
+        
+        let level = "Low Dependency";
+        if (total > 0) {
+          if (pct <= 25) level = "Low Dependency";
+          else if (pct <= 50) level = "Moderate Dependency";
+          else if (pct <= 75) level = "High Dependency";
+          else level = "Fully Dependent";
+        } else if (support > 0) {
+          level = "Fully Dependent";
+        }
+        
+        setAnswer("parentDependencyPercentage", pct);
+        setAnswer("parentDependencyLevel", level);
+      };
+
+      const handleParentPensionChange = (pensionVal: number) => {
+        setAnswer("parentMonthlyPension", pensionVal);
+        computeParentDependency(pensionVal, answers.parentMonthlySupport || 0);
+      };
+
+      const handleParentSupportChange = (supportVal: number) => {
+        setAnswer("parentMonthlySupport", supportVal);
+        computeParentDependency(answers.parentMonthlyPension || 0, supportVal);
+      };
+
+      const handlePensionReceiveChange = (ans: "Yes" | "No") => {
+        setAnswer("parentsReceivePension", ans);
+        if (ans === "No") {
+          setAnswer("parentMonthlyPension", 0);
+          computeParentDependency(0, answers.parentMonthlySupport || 0);
+        }
       };
 
       const hasChildren = (answers.dependents || []).includes("Children");
+      const hasParents = (answers.dependents || []).includes("Parents");
 
       return (
         <div className="space-y-6">
@@ -314,6 +708,143 @@ function StepContent({ step }: { step: number }) {
               );
             })}
           </div>
+
+          <AnimatePresence>
+            {hasParents && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: "auto" }} 
+                exit={{ opacity: 0, height: 0 }}
+                className="p-5 bg-[#121212] rounded-xl border border-[rgba(255,255,255,0.05)] space-y-6 overflow-hidden"
+              >
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1">Parent Financial Dependency</h3>
+                  <p className="text-xs text-[#B5B5B5]">Help us understand how financially dependent your parents are on you.</p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm text-white font-medium block">Do your parents receive a pension? *</label>
+                  <div className="grid grid-cols-2 gap-3 w-full sm:w-64">
+                    <button
+                      type="button"
+                      onClick={() => handlePensionReceiveChange("Yes")}
+                      className={`py-2 rounded-lg font-bold text-sm border text-center transition-all cursor-pointer ${
+                        answers.parentsReceivePension === "Yes"
+                          ? "border-[#F7B500] bg-[#F7B500]/10 text-white"
+                          : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePensionReceiveChange("No")}
+                      className={`py-2 rounded-lg font-bold text-sm border text-center transition-all cursor-pointer ${
+                        answers.parentsReceivePension === "No"
+                          ? "border-[#F7B500] bg-[#F7B500]/10 text-white"
+                          : "border-[rgba(255,255,255,0.08)] text-[#B5B5B5] hover:border-[rgba(255,255,255,0.2)] bg-[#171717]"
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                {answers.parentsReceivePension === "Yes" && (
+                  <div className="space-y-3">
+                    <label className="text-sm text-white font-medium block">What is the total monthly pension amount received by your parents? *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B5B5B5]">₹</span>
+                      <Input
+                        type="number"
+                        placeholder="Enter pension amount"
+                        className="pl-8"
+                        value={answers.parentMonthlyPension || ""}
+                        onChange={(e) => handleParentPensionChange(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: "₹10,000", value: 10000 },
+                        { label: "₹20,000", value: 20000 },
+                        { label: "₹30,000", value: 30000 },
+                        { label: "₹50,000", value: 50000 }
+                      ].map((pill) => (
+                        <button
+                          key={pill.value}
+                          type="button"
+                          onClick={() => handleParentPensionChange(pill.value)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                            answers.parentMonthlyPension === pill.value
+                              ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                              : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                          }`}
+                        >
+                          {pill.label}
+                        </button>
+                      ))}
+                    </div>
+                    {answers.parentMonthlyPension !== undefined && answers.parentMonthlyPension <= 0 && (
+                      <p className="text-red-500 text-xs">Pension must be greater than ₹0.</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <label className="text-sm text-white font-medium block">
+                    How much financial support do you provide to your parents every month? <span className="text-xs text-[#737373]">(Optional but recommended)</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B5B5B5]">₹</span>
+                    <Input
+                      type="number"
+                      placeholder="Enter support amount"
+                      className="pl-8"
+                      value={answers.parentMonthlySupport || ""}
+                      onChange={(e) => handleParentSupportChange(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "₹5,000", value: 5000 },
+                      { label: "₹10,000", value: 10000 },
+                      { label: "₹20,000", value: 20000 },
+                      { label: "₹50,000", value: 50000 }
+                    ].map((pill) => (
+                      <button
+                        key={pill.value}
+                        type="button"
+                        onClick={() => handleParentSupportChange(pill.value)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                          answers.parentMonthlySupport === pill.value
+                            ? "bg-[#F7B500] text-black border-[#F7B500] font-bold"
+                            : "bg-white/[0.02] text-[#B5B5B5] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                        }`}
+                      >
+                        {pill.label}
+                      </button>
+                    ))}
+                  </div>
+                  {answers.parentMonthlySupport !== undefined && answers.parentMonthlySupport < 0 && (
+                    <p className="text-red-500 text-xs">Support amount must be positive.</p>
+                  )}
+                </div>
+
+                {(answers.parentDependencyPercentage !== undefined && answers.parentDependencyPercentage > 0) ? (
+                  <div className="p-4 rounded-lg bg-[#171717] border border-[rgba(255,255,255,0.05)] flex justify-between items-center flex-wrap gap-2">
+                    <div>
+                      <span className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider">Dependency Level</span>
+                      <h4 className="text-lg font-bold text-white">{answers.parentDependencyLevel}</h4>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-[#B5B5B5] uppercase font-bold tracking-wider">Dependency Percentage</span>
+                      <h4 className="text-lg font-bold text-[#F7B500]">{answers.parentDependencyPercentage}%</h4>
+                    </div>
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {hasChildren && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-4 bg-[#121212] rounded-xl border border-[rgba(255,255,255,0.05)] space-y-4">
@@ -642,10 +1173,23 @@ function StepContent({ step }: { step: number }) {
 }
 
 // Currency Input Component
-function CurrencyInput({ label, value, onChange }: { label: string, value: any, onChange: (v: number) => void }) {
+function CurrencyInput({ 
+  label, 
+  description, 
+  value, 
+  onChange 
+}: { 
+  label: string, 
+  description?: string, 
+  value: any, 
+  onChange: (v: number) => void 
+}) {
   return (
     <div className="space-y-2">
-      <label className="text-sm text-[#B5B5B5]">{label}</label>
+      <div>
+        <label className="text-sm text-[#B5B5B5]">{label}</label>
+        {description && <p className="text-xs text-[#737373] mt-0.5">{description}</p>}
+      </div>
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B5B5B5]">₹</span>
         <Input

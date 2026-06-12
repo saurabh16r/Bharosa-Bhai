@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Coins, PiggyBank, Award } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export function SipCalculatorSection() {
   const [monthlySip, setMonthlySip] = React.useState(5000);
@@ -36,12 +37,70 @@ export function SipCalculatorSection() {
     }).format(val);
   };
 
+  const formatFriendlyCurrency = (val: number) => {
+    if (val >= 10000000) {
+      return `₹${(val / 10000000).toFixed(2)} Cr`;
+    } else if (val >= 100000) {
+      return `₹${(val / 100000).toFixed(2)} Lakh`;
+    }
+    return formatCurrency(val);
+  };
+
   // Percentages for visual progress ring
   const total = results.futureValue;
   const investedPercent = Math.round((results.investedAmount / total) * 100) || 0;
   const returnPercent = 100 - investedPercent;
   const multiplier = (results.futureValue / results.investedAmount).toFixed(1);
   const totalReturnPercent = Math.round(((results.futureValue - results.investedAmount) / results.investedAmount) * 100);
+
+  const donutData = React.useMemo(() => [
+    { name: "Invested Amount", value: results.investedAmount, color: "#E5E7EB" },
+    { name: "Wealth Created", value: results.estimatedReturns, color: "#FF9F1A" }
+  ], [results.investedAmount, results.estimatedReturns]);
+
+  // Console debugging logs
+  React.useEffect(() => {
+    console.log("--- SIP Calculator Debug ---");
+    console.log("Invested Amount:", results.investedAmount);
+    console.log("Returns Amount:", results.estimatedReturns);
+    console.log("Total Wealth:", results.futureValue);
+    console.log("Growth Multiple:", multiplier + "x");
+    console.log("Chart Data:", donutData);
+    console.log("----------------------------");
+  }, [results, multiplier, donutData]);
+
+  // Donut Tooltip
+  const DonutTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-xl font-sans text-xs space-y-2 text-[#121212] z-50">
+          <div className="flex justify-between gap-6">
+            <span className="text-[#6B7280] font-medium">Invested Amount:</span>
+            <span className="font-bold text-[#121212]">{formatCurrency(results.investedAmount)}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span className="text-[#FF9F1A] font-medium">Wealth Generated:</span>
+            <span className="font-bold text-[#FF9F1A]">{formatCurrency(results.estimatedReturns)}</span>
+          </div>
+          <div className="flex justify-between gap-6 border-t border-gray-100 pt-1">
+            <span className="text-[#121212] font-semibold">Total Wealth:</span>
+            <span className="font-bold text-[#121212]">{formatCurrency(results.futureValue)}</span>
+          </div>
+          <div className="border-t border-gray-100 pt-1.5 space-y-1">
+            <div className="flex justify-between gap-6 text-[#22C55E] font-bold">
+              <span>Growth Multiple:</span>
+              <span>{multiplier}x</span>
+            </div>
+            <div className="flex justify-between gap-6 text-[#22C55E] font-bold">
+              <span>Return %:</span>
+              <span>+{totalReturnPercent}%</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <section className="py-24 bg-[#F9FAFB] text-[#121212] overflow-hidden">
@@ -183,61 +242,68 @@ export function SipCalculatorSection() {
               </div>
             </div>
 
-            {/* Circular Ring and Percentage Chart */}
+            {/* Compounding Chart Area */}
             <div className="flex flex-col sm:flex-row items-center gap-6 pt-6 border-t border-gray-100 mt-6 sm:mt-0">
-              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-gray-100"
-                    strokeWidth="3.5"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-[#FF9F1A]"
-                    strokeWidth="3.5"
-                    strokeDasharray={`${returnPercent}, 100`}
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center justify-center text-center">
+              
+              {/* Interactive Donut Chart using actual values */}
+              <div className="relative w-36 h-36 shrink-0 flex items-center justify-center mx-auto sm:mx-0 bg-transparent">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={65}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {donutData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<DonutTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
                   <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider">Growth</span>
                   <span className="text-sm font-black text-[#FF9F1A]">{multiplier}x</span>
                 </div>
               </div>
               
+              {/* Below/Next to the Chart metrics showing friendly values (Cr/Lakhs) */}
               <div className="space-y-3 flex-1 w-full text-left">
                 <div className="flex items-center justify-between gap-4 text-xs font-bold text-[#555555]">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-gray-200 shrink-0" />
-                    <span>Principal Investment ({investedPercent}%)</span>
+                    <span>Invested Amount</span>
                   </div>
-                  <span className="font-extrabold text-[#121212]">{formatCurrency(results.investedAmount)}</span>
+                  <span className="font-extrabold text-[#121212]">{formatFriendlyCurrency(results.investedAmount)}</span>
                 </div>
                 
                 <div className="flex items-center justify-between gap-4 text-xs font-bold text-[#FF9F1A]">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#FF9F1A] shrink-0" />
-                    <span>Wealth Created ({returnPercent}%)</span>
+                    <span>Wealth Generated</span>
                   </div>
-                  <span className="font-extrabold">{formatCurrency(results.estimatedReturns)}</span>
+                  <span className="font-extrabold">{formatFriendlyCurrency(results.estimatedReturns)}</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 text-xs font-bold text-[#1E88FF]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#1E88FF] shrink-0" />
+                    <span>Total Wealth</span>
+                  </div>
+                  <span className="font-extrabold">{formatFriendlyCurrency(results.futureValue)}</span>
                 </div>
 
                 <div className="border-t border-dashed border-gray-200 pt-2 flex items-center justify-between gap-4 text-xs font-bold text-[#22C55E]">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#22C55E]/20 border border-[#22C55E] shrink-0" />
-                    <span>Total Performance</span>
+                    <span>Growth Multiple</span>
                   </div>
-                  <span className="font-black text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded">
-                    {multiplier}x Wealth Created (+{totalReturnPercent}% Return)
+                  <span className="font-black text-[#22C55E] bg-[#22C55E]/10 px-2.5 py-0.5 rounded">
+                    {multiplier}x Growth (+{totalReturnPercent}% Return)
                   </span>
                 </div>
               </div>

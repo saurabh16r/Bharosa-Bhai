@@ -17,11 +17,12 @@ export default function AdminDashboardOverview() {
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbConnected, setDbConnected] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
 
-    // Setup Realtime Subscription
+    // Setup Realtime Subscription for instantaneous UI syncs
     const channel = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -39,6 +40,22 @@ export default function AdminDashboardOverview() {
            fetchDashboardData();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leads' },
+        (payload) => {
+           console.log('Realtime Update: leads', payload);
+           fetchDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'discovery_calls' },
+        (payload) => {
+           console.log('Realtime Update: discovery_calls', payload);
+           fetchDashboardData();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -48,19 +65,44 @@ export default function AdminDashboardOverview() {
 
   const fetchDashboardData = async () => {
     try {
-      // Check if supabase is actually connected by doing a lightweight query
-      const { data: users, error: userError } = await supabase.from('users').select('id, full_name, email, city, created_at').order('created_at', { ascending: false }).limit(5);
+      // Step 2: Database health check query (SELECT COUNT(*) FROM users)
+      const { count: usersCount, error: userError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
       
       if (userError) {
         throw userError;
       }
       
       setDbConnected(true);
+      setDbError(null);
 
-      const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
-      const { count: testsCount } = await supabase.from('test_results').select('*', { count: 'exact', head: true });
-      const { count: callsCount } = await supabase.from('discovery_calls').select('*', { count: 'exact', head: true });
-      const { data: scores } = await supabase.from('test_results').select('health_score');
+      // Fetch other stats and recent items
+      const { data: users, error: fetchUsersError } = await supabase
+        .from('users')
+        .select('id, full_name, email, city, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (fetchUsersError) throw fetchUsersError;
+
+      const { count: testsCount, error: testsError } = await supabase
+        .from('test_results')
+        .select('*', { count: 'exact', head: true });
+
+      if (testsError) throw testsError;
+
+      const { count: callsCount, error: callsError } = await supabase
+        .from('discovery_calls')
+        .select('*', { count: 'exact', head: true });
+
+      if (callsError) throw callsError;
+
+      const { data: scores, error: scoresError } = await supabase
+        .from('test_results')
+        .select('health_score');
+
+      if (scoresError) throw scoresError;
 
       let avg = 0;
       if (scores && scores.length > 0) {
@@ -78,10 +120,34 @@ export default function AdminDashboardOverview() {
 
       setRecentLeads(users || []);
 
-    } catch (err) {
-      console.error("Supabase fetch failed (expected if DB not yet configured):", err);
+    } catch (err: any) {
+      console.error("Supabase connection health check failed:", err);
       setDbConnected(false);
-      // Fallback to empty mock state for demo purposes while DB is disconnected
+      
+      // Step 10: Parse and display actual error message
+      let rawError = "Unknown connection error";
+      if (err) {
+        rawError = err.message || err.details || (typeof err === "string" ? err : JSON.stringify(err));
+      }
+
+      // Map to descriptive debugging messages
+      let mappedError = rawError;
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        mappedError = "Missing NEXT_PUBLIC_SUPABASE_URL";
+      } else if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        mappedError = "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      } else if (rawError.includes("Could not find the table") || rawError.includes("relation \"users\" does not exist")) {
+        mappedError = "Users table not found";
+      } else if (rawError.includes("Invalid API key") || rawError.includes("invalid JWT") || rawError.includes("JWT") || rawError.includes("Invalid token")) {
+        mappedError = "Supabase authentication failed / Invalid API Key";
+      } else if (rawError.includes("permission denied") || rawError.includes("policy") || rawError.includes("Row Level Security")) {
+        mappedError = "RLS policy blocking access";
+      } else if (rawError.includes("fetch failed") || rawError.includes("ENOTFOUND") || rawError.includes("Network Error")) {
+        mappedError = "Network Error (Cannot connect to Supabase)";
+      }
+
+      setDbError(mappedError);
+      
       setStats({
         totalLeads: 0,
         testsCompleted: 0,
@@ -103,15 +169,18 @@ export default function AdminDashboardOverview() {
           <p className="text-[#B5B5B5]">Real-time performance metrics and CRM insights.</p>
         </div>
         {!loading && !dbConnected && (
-          <div className="bg-red-500/10 border border-red-500/20 px-4 py-2 rounded text-red-500 text-sm font-bold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Database Disconnected
+          <div className="bg-red-500/10 border border-red-500/20 px-4 py-2 rounded text-red-500 text-sm font-bold flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              🔴 Database Disconnected
+            </div>
+            <span className="text-xs font-semibold text-red-400/80">{dbError || "Unknown connection error"}</span>
           </div>
         )}
         {!loading && dbConnected && (
           <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded text-green-500 text-sm font-bold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Live
+            🟢 Database Connected
           </div>
         )}
       </div>

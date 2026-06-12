@@ -75,25 +75,43 @@ CREATE TABLE chat_history (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. Create Financial Reports Table
+CREATE TABLE financial_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  metrics JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. Create PDF Reports Table
+CREATE TABLE pdf_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  pdf_url TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- --- Enable Row Level Security (RLS) ---
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE test_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discovery_calls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pdf_reports ENABLE ROW LEVEL SECURITY;
 
--- --- RLS Policies for Anonymous/Public Users (Form submissions) ---
-CREATE POLICY "Allow public insert on users" ON users FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert on test_results" ON test_results FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert on leads" ON leads FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert on discovery_calls" ON discovery_calls FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert on chat_history" ON chat_history FOR INSERT WITH CHECK (true);
+-- --- RLS Policies for Anonymous/Public Users (Anon Role) ---
+-- Regular users can only insert their submissions and cannot read other records (except users/settings for flow checks)
+CREATE POLICY "Allow public insert on users" ON users FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public select on users" ON users FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow public select on users" ON users FOR SELECT USING (true);
-CREATE POLICY "Allow public select on test_results" ON test_results FOR SELECT USING (true);
-CREATE POLICY "Allow public select on leads" ON leads FOR SELECT USING (true);
-CREATE POLICY "Allow public select on discovery_calls" ON discovery_calls FOR SELECT USING (true);
-CREATE POLICY "Allow public select on chat_history" ON chat_history FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on test_results" ON test_results FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public insert on leads" ON leads FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public insert on discovery_calls" ON discovery_calls FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public insert on chat_history" ON chat_history FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public insert on financial_reports" ON financial_reports FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public insert on pdf_reports" ON pdf_reports FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- --- RLS Policies for Authenticated Admin Users (Full dashboard access) ---
 CREATE POLICY "Allow admin all actions on users" ON users FOR ALL TO authenticated USING (true);
@@ -101,19 +119,12 @@ CREATE POLICY "Allow admin all actions on test_results" ON test_results FOR ALL 
 CREATE POLICY "Allow admin all actions on leads" ON leads FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow admin all actions on discovery_calls" ON discovery_calls FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow admin all actions on chat_history" ON chat_history FOR ALL TO authenticated USING (true);
-
--- 6. Create System Settings Table
-DROP TABLE IF EXISTS system_settings CASCADE;
-CREATE TABLE system_settings (
-  key TEXT PRIMARY KEY,
-  value JSONB,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable RLS for system_settings
-ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public select on system_settings" ON system_settings FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on system_settings" ON system_settings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on system_settings" ON system_settings FOR UPDATE USING (true);
 CREATE POLICY "Allow admin all actions on system_settings" ON system_settings FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow admin all actions on financial_reports" ON financial_reports FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow admin all actions on pdf_reports" ON pdf_reports FOR ALL TO authenticated USING (true);
+
+-- System Settings Public Access (For loading settings in assessment form)
+CREATE POLICY "Allow public select on system_settings" ON system_settings FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow public insert on system_settings" ON system_settings FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update on system_settings" ON system_settings FOR UPDATE TO anon, authenticated USING (true);
 

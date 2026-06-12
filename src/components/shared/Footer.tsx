@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Globe, Mail, Phone, MapPin } from "lucide-react";
+import { Globe, Mail, Phone } from "lucide-react";
 import Image from "next/image";
 
 export function Footer() {
@@ -59,16 +59,16 @@ export function Footer() {
             <h4 className="text-white font-semibold mb-6">Contact Us</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-sm text-[#B5B5B5]">
-                <Mail size={18} className="text-[#F7B500] shrink-0 mt-0.5" />
-                <span>namaste@bharosabhai.in</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm text-[#B5B5B5]">
                 <Phone size={18} className="text-[#F7B500] shrink-0 mt-0.5" />
-                <span>1800-123-4567</span>
+                <a href="tel:+919009090791" className="hover:text-white transition-colors">
+                  +91 90090 90791
+                </a>
               </li>
               <li className="flex items-start gap-3 text-sm text-[#B5B5B5]">
-                <MapPin size={18} className="text-[#F7B500] shrink-0 mt-0.5" />
-                <span>Level 4, Fintech Hub, Bandra Kurla Complex, Mumbai, India</span>
+                <Mail size={18} className="text-[#F7B500] shrink-0 mt-0.5" />
+                <a href="mailto:bharosabhaii@gmail.com" className="hover:text-white transition-colors">
+                  bharosabhaii@gmail.com
+                </a>
               </li>
             </ul>
           </div>

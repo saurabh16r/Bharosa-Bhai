@@ -66,12 +66,14 @@ export default function ResultDashboard() {
           .select()
           .single();
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error("[CRM Save Fail] Error inserting user record:", userError.message || userError.details);
+          throw userError;
+        }
 
         // 2. Insert Test Results
         const journeyScore = Math.round((metrics.protectionScore * 0.3) + (metrics.retirementScore * 0.4) + (metrics.goalsScore * 0.3));
-        
-        await supabase.from("test_results").insert({
+        const { error: testResultError } = await supabase.from("test_results").insert({
           user_id: userData.id,
           raw_answers: answers,
           health_score: metrics.overallScore,
@@ -81,14 +83,48 @@ export default function ResultDashboard() {
           journey_score: journeyScore
         });
 
+        if (testResultError) {
+          console.error("[CRM Save Fail] Error inserting test result record:", testResultError.message || testResultError.details);
+          throw testResultError;
+        }
+
         // 3. Insert CRM Lead
-        await supabase.from("leads").insert({
+        const { error: leadError } = await supabase.from("leads").insert({
           user_id: userData.id,
           status: 'New Lead'
         });
 
+        if (leadError) {
+          console.error("[CRM Save Fail] Error inserting CRM lead record:", leadError.message || leadError.details);
+          throw leadError;
+        }
+
+        // 4. Insert Financial Report
+        const { error: finReportError } = await supabase.from("financial_reports").insert({
+          user_id: userData.id,
+          metrics: metrics,
+          created_at: new Date().toISOString()
+        });
+
+        if (finReportError) {
+          console.error("[CRM Save Fail] Error inserting financial report record:", finReportError.message || finReportError.details);
+          throw finReportError;
+        }
+
+        // 5. Insert PDF Report
+        const { error: pdfReportError } = await supabase.from("pdf_reports").insert({
+          user_id: userData.id,
+          pdf_url: `/api/pdf?id=${userData.id}`,
+          created_at: new Date().toISOString()
+        });
+
+        if (pdfReportError) {
+          console.error("[CRM Save Fail] Error inserting PDF report record:", pdfReportError.message || pdfReportError.details);
+          throw pdfReportError;
+        }
+
         localStorage.setItem("test_saved", "true");
-        console.log("Successfully saved assessment to Supabase CRM");
+        console.log("Successfully saved assessment, lead, and reports to Supabase CRM");
       } catch (e: any) {
         console.error("Failed to save to Supabase CRM:", e?.message || e?.details || e);
       }

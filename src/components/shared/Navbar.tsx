@@ -2,14 +2,17 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 
 export function Navbar() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [activeSection, setActiveSection] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -19,14 +22,113 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Smooth scroll logic
+  const smoothScrollTo = (elementId: string) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    const headerOffset = 80; // height of sticky navbar
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - headerOffset;
+
+    const startPosition = window.pageYOffset;
+    const distance = offsetPosition - startPosition;
+    let startTime: number | null = null;
+    const duration = 700; // 600-800ms
+
+    const animation = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const run = easeInOutQuad(timeElapsed, startPosition, distance, duration);
+      window.scrollTo(0, run);
+      if (timeElapsed < duration) requestAnimationFrame(animation);
+    };
+
+    const easeInOutQuad = (t: number, b: number, c: number, d: number) => {
+      t /= d / 2;
+      if (t < 1) return (c / 2) * t * t + b;
+      t--;
+      return (-c / 2) * (t * (t - 2) - 1) + b;
+    };
+
+    requestAnimationFrame(animation);
+  };
+
+  // Scroll spy IntersectionObserver for active state
+  React.useEffect(() => {
+    if (typeof window === "undefined" || pathname !== "/") {
+      setActiveSection(null);
+      return;
+    }
+
+    const observerOptions = {
+      root: null,
+      rootMargin: "-40% 0px -40% 0px", // triggers in mid viewport
+      threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        } else if (activeSection === entry.target.id) {
+          setActiveSection(null);
+        }
+      });
+    }, observerOptions);
+
+    const aboutSec = document.getElementById("about");
+    const roadmapSec = document.getElementById("roadmap");
+
+    if (aboutSec) observer.observe(aboutSec);
+    if (roadmapSec) observer.observe(roadmapSec);
+
+    return () => {
+      if (aboutSec) observer.unobserve(aboutSec);
+      if (roadmapSec) observer.unobserve(roadmapSec);
+    };
+  }, [pathname, activeSection]);
+
+  // Handle hash on initial mount or path change
+  React.useEffect(() => {
+    if (typeof window === "undefined" || pathname !== "/") return;
+
+    if (window.location.hash) {
+      const hash = window.location.hash.replace("#", "");
+      if (hash === "about" || hash === "roadmap") {
+        setTimeout(() => {
+          smoothScrollTo(hash);
+        }, 300);
+      }
+    }
+  }, [pathname]);
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") && pathname === "/") {
+      e.preventDefault();
+      const targetId = href.split("#")[1];
+      smoothScrollTo(targetId);
+      window.history.pushState(null, "", href);
+    }
+  };
+
   const links = [
     { name: "Home", href: "/" },
     { name: "Free Test", href: "/test" },
     { name: "SIP Calculator", href: "/calculator" },
     { name: "Financial Roadmap", href: "/#roadmap" },
-    { name: "Features", href: "/#features" },
     { name: "About", href: "/#about" },
   ];
+
+  const isLinkActive = (link: { name: string; href: string }) => {
+    if (pathname === "/") {
+      if (link.name === "About" && activeSection === "about") return true;
+      if (link.name === "Financial Roadmap" && activeSection === "roadmap") return true;
+      if (link.name === "Home" && activeSection === null) return true;
+      return false;
+    }
+    return pathname === link.href;
+  };
 
   return (
     <header
@@ -53,15 +155,21 @@ export function Navbar() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-          {links.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="text-sm font-medium text-[#B5B5B5] hover:text-[#F7B500] transition-colors"
-            >
-              {link.name}
-            </Link>
-          ))}
+          {links.map((link) => {
+            const active = isLinkActive(link);
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={(e) => handleLinkClick(e, link.href)}
+                className={`text-sm font-medium transition-colors ${
+                  active ? "text-[#F7B500] font-bold" : "text-[#B5B5B5] hover:text-[#F7B500]"
+                }`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* CTA */}
@@ -87,16 +195,24 @@ export function Navbar() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed inset-0 top-0 pt-24 px-6 bg-[#0E0E0E] z-40 flex flex-col gap-6"
           >
-            {links.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="text-xl font-medium text-white hover:text-[#F7B500] transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const active = isLinkActive(link);
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`text-xl font-medium transition-colors ${
+                    active ? "text-[#F7B500] font-bold" : "text-white hover:text-[#F7B500]"
+                  }`}
+                  onClick={(e) => {
+                    setIsMobileMenuOpen(false);
+                    handleLinkClick(e, link.href);
+                  }}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
             <div className="pt-6 border-t border-[rgba(255,255,255,0.08)]">
               <Link href="/test" onClick={() => setIsMobileMenuOpen(false)}>
                 <Button variant="primary" className="w-full h-14 text-lg">Start Free Test</Button>

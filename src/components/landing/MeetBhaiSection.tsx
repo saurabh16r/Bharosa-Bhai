@@ -15,7 +15,7 @@ export function MeetBhaiSection() {
   ];
 
   return (
-    <section className="py-24 bg-[#0E0E0E] relative overflow-hidden">
+    <section id="about" className="py-24 bg-[#0E0E0E] relative overflow-hidden">
       {/* Background ambient light */}
       <div className="absolute top-[20%] left-[-15%] w-[400px] h-[400px] bg-[#1E88FF]/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[20%] right-[-10%] w-[350px] h-[350px] bg-[#F7B500]/5 rounded-full blur-[120px] pointer-events-none" />

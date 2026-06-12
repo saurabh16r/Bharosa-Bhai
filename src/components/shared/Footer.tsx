@@ -1,9 +1,54 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Globe, Mail, Phone } from "lucide-react";
 import Image from "next/image";
 
 export function Footer() {
+  const pathname = usePathname();
+
+  const smoothScrollTo = (elementId: string) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    const headerOffset = 80; // height of sticky navbar
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - headerOffset;
+
+    const startPosition = window.pageYOffset;
+    const distance = offsetPosition - startPosition;
+    let startTime: number | null = null;
+    const duration = 700; // 600-800ms
+
+    const animation = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const run = easeInOutQuad(timeElapsed, startPosition, distance, duration);
+      window.scrollTo(0, run);
+      if (timeElapsed < duration) requestAnimationFrame(animation);
+    };
+
+    const easeInOutQuad = (t: number, b: number, c: number, d: number) => {
+      t /= d / 2;
+      if (t < 1) return (c / 2) * t * t + b;
+      t--;
+      return (-c / 2) * (t * (t - 2) - 1) + b;
+    };
+
+    requestAnimationFrame(animation);
+  };
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") && pathname === "/") {
+      e.preventDefault();
+      const targetId = href.split("#")[1];
+      smoothScrollTo(targetId);
+      window.history.pushState(null, "", href);
+    }
+  };
+
   return (
     <footer className="bg-[#0A0A0A] border-t border-[rgba(255,255,255,0.08)] pt-16 pb-8">
       <div className="container mx-auto px-4 md:px-6">
@@ -39,8 +84,8 @@ export function Footer() {
               <li><Link href="/" className="text-[#B5B5B5] hover:text-white transition-colors text-sm">Home</Link></li>
               <li><Link href="/test" className="text-[#B5B5B5] hover:text-white transition-colors text-sm">Free Financial Test</Link></li>
               <li><Link href="/calculator" className="text-[#B5B5B5] hover:text-white transition-colors text-sm">SIP Calculator</Link></li>
-              <li><Link href="/#roadmap" className="text-[#B5B5B5] hover:text-white transition-colors text-sm">Financial Roadmap</Link></li>
-              <li><Link href="/about" className="text-[#B5B5B5] hover:text-white transition-colors text-sm">About Bharosa Bhai</Link></li>
+              <li><Link href="/#roadmap" onClick={(e) => handleLinkClick(e, "/#roadmap")} className="text-[#B5B5B5] hover:text-white transition-colors text-sm">Financial Roadmap</Link></li>
+              <li><Link href="/#about" onClick={(e) => handleLinkClick(e, "/#about")} className="text-[#B5B5B5] hover:text-white transition-colors text-sm">About Bharosa Bhai</Link></li>
             </ul>
           </div>
 

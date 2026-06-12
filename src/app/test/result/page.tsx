@@ -21,6 +21,7 @@ export default function ResultDashboard() {
   const { answers, userDetails } = useTestStore();
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("Overview");
+  const [saveErrors, setSaveErrors] = React.useState<string[]>([]);
   const reportRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -39,6 +40,8 @@ export default function ResultDashboard() {
       if (typeof window === "undefined" || localStorage.getItem("test_saved") === "true") return;
       if (!userDetails.email || !metrics) return;
 
+      const errorsToReport: string[] = [];
+
       try {
         // Sanitize details before saving
         const sanitizedName = sanitizeInput(userDetails.name || "");
@@ -47,86 +50,148 @@ export default function ResultDashboard() {
         const sanitizedCity = sanitizeInput(userDetails.city || "");
 
         // 1. Insert User
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .insert({
-            full_name: sanitizedName,
-            email: sanitizedEmail,
-            phone: sanitizedPhone || null,
-            city: sanitizedCity || null,
-            age: userDetails.age,
-            retire_at: userDetails.retireAt,
-            parents_selected: answers.parentsSelected ?? false,
-            parents_receive_pension: answers.parentsReceivePension || null,
-            parent_monthly_pension: answers.parentMonthlyPension ?? 0,
-            parent_monthly_support: answers.parentMonthlySupport ?? 0,
-            parent_dependency_level: answers.parentDependencyLevel || null,
-            parent_dependency_percentage: answers.parentDependencyPercentage ?? 0
-          })
-          .select()
-          .single();
+        let userData: any = null;
+        let userErrorMsg: string | null = null;
 
-        if (userError) {
-          console.error("[CRM Save Fail] Error inserting user record:", userError.message || userError.details);
-          throw userError;
+        try {
+          // Attempt full insert first
+          const { data, error } = await supabase
+            .from("users")
+            .insert({
+              full_name: sanitizedName,
+              email: sanitizedEmail,
+              phone: sanitizedPhone || null,
+              city: sanitizedCity || null,
+              age: userDetails.age,
+              retire_at: userDetails.retireAt,
+              parents_selected: answers.parentsSelected ?? false,
+              parents_receive_pension: answers.parentsReceivePension || null,
+              parent_monthly_pension: answers.parentMonthlyPension ?? 0,
+              parent_monthly_support: answers.parentMonthlySupport ?? 0,
+              parent_dependency_level: answers.parentDependencyLevel || null,
+              parent_dependency_percentage: answers.parentDependencyPercentage ?? 0
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          userData = data;
+        } catch (err: any) {
+          console.warn("Full user insert failed, retrying with basic columns. Error:", err?.message || err);
+          // Retry with basic columns
+          const { data, error } = await supabase
+            .from("users")
+            .insert({
+              full_name: sanitizedName,
+              email: sanitizedEmail,
+              phone: sanitizedPhone || null,
+              city: sanitizedCity || null,
+              age: userDetails.age,
+              retire_at: userDetails.retireAt
+            })
+            .select()
+            .single();
+
+          if (error) {
+            userErrorMsg = err?.message || String(err);
+            console.error("Failed to save user:", error.message || error);
+            errorsToReport.push(`Failed to save user: ${error.message}`);
+          } else {
+            userData = data;
+          }
         }
 
-        // 2. Insert Test Results
-        const journeyScore = Math.round((metrics.protectionScore * 0.3) + (metrics.retirementScore * 0.4) + (metrics.goalsScore * 0.3));
-        const { error: testResultError } = await supabase.from("test_results").insert({
-          user_id: userData.id,
-          raw_answers: answers,
-          health_score: metrics.overallScore,
-          retirement_score: metrics.retirementScore,
-          goals_score: metrics.goalsScore,
-          protection_score: metrics.protectionScore,
-          journey_score: journeyScore
-        });
+        if (userData) {
+          console.log("User Saved Successfully");
 
-        if (testResultError) {
-          console.error("[CRM Save Fail] Error inserting test result record:", testResultError.message || testResultError.details);
-          throw testResultError;
+          // 2. Insert Test Results
+          const journeyScore = Math.round((metrics.protectionScore * 0.3) + (metrics.retirementScore * 0.4) + (metrics.goalsScore * 0.3));
+          const { error: testResultError } = await supabase.from("test_results").insert({
+            user_id: userData.id,
+            raw_answers: answers,
+            health_score: metrics.overallScore,
+            retirement_score: metrics.retirementScore,
+            goals_score: metrics.goalsScore,
+            protection_score: metrics.protectionScore,
+            journey_score: journeyScore
+          });
+
+          if (testResultError) {
+            console.error("Failed to save assessment:", testResultError.message);
+            errorsToReport.push(`Failed to save assessment: ${testResultError.message}`);
+          } else {
+            console.log("Assessment Saved Successfully");
+          }
+
+          // 3. Insert CRM Lead (Attempt 'leads' table first, fallback to 'lead_status')
+          const { error: leadError } = await supabase.from("leads").insert({
+            user_id: userData.id,
+            status: 'New Lead'
+          });
+
+          if (leadError) {
+            console.warn("Inserting into leads table failed, trying lead_status table:", leadError.message);
+            const { error: leadStatusError } = await supabase.from("lead_status").insert({
+              user_id: userData.id,
+              status: 'New Lead'
+            });
+
+            if (leadStatusError) {
+              console.error("Failed to create lead:", leadStatusError.message);
+              errorsToReport.push(`Failed to create lead: ${leadStatusError.message}`);
+            } else {
+              console.log("Lead Saved Successfully");
+            }
+          } else {
+            console.log("Lead Saved Successfully");
+          }
+
+          // 4. Insert Financial Report (optional, non-blocking)
+          try {
+            const { error: finReportError } = await supabase.from("financial_reports").insert({
+              user_id: userData.id,
+              metrics: metrics,
+              created_at: new Date().toISOString()
+            });
+
+            if (finReportError) {
+              console.error("Failed to save financial report:", finReportError.message);
+              errorsToReport.push(`Failed to save financial report: ${finReportError.message}`);
+            }
+          } catch (e: any) {
+            console.error("Failed to save financial report:", e?.message || e);
+            errorsToReport.push(`Failed to save financial report: ${e?.message || e}`);
+          }
+
+          // 5. Insert PDF Report (optional, non-blocking)
+          try {
+            const { error: pdfReportError } = await supabase.from("pdf_reports").insert({
+              user_id: userData.id,
+              pdf_url: `/api/pdf?id=${userData.id}`,
+              created_at: new Date().toISOString()
+            });
+
+            if (pdfReportError) {
+              console.error("Failed to save PDF:", pdfReportError.message);
+              errorsToReport.push(`Failed to save PDF: ${pdfReportError.message}`);
+            } else {
+              console.log("PDF Saved Successfully");
+            }
+          } catch (e: any) {
+            console.error("Failed to save PDF:", e?.message || e);
+            errorsToReport.push(`Failed to save PDF: ${e?.message || e}`);
+          }
+
+          // Set saved flag since the core user was created
+          localStorage.setItem("test_saved", "true");
         }
-
-        // 3. Insert CRM Lead
-        const { error: leadError } = await supabase.from("leads").insert({
-          user_id: userData.id,
-          status: 'New Lead'
-        });
-
-        if (leadError) {
-          console.error("[CRM Save Fail] Error inserting CRM lead record:", leadError.message || leadError.details);
-          throw leadError;
-        }
-
-        // 4. Insert Financial Report
-        const { error: finReportError } = await supabase.from("financial_reports").insert({
-          user_id: userData.id,
-          metrics: metrics,
-          created_at: new Date().toISOString()
-        });
-
-        if (finReportError) {
-          console.error("[CRM Save Fail] Error inserting financial report record:", finReportError.message || finReportError.details);
-          throw finReportError;
-        }
-
-        // 5. Insert PDF Report
-        const { error: pdfReportError } = await supabase.from("pdf_reports").insert({
-          user_id: userData.id,
-          pdf_url: `/api/pdf?id=${userData.id}`,
-          created_at: new Date().toISOString()
-        });
-
-        if (pdfReportError) {
-          console.error("[CRM Save Fail] Error inserting PDF report record:", pdfReportError.message || pdfReportError.details);
-          throw pdfReportError;
-        }
-
-        localStorage.setItem("test_saved", "true");
-        console.log("Successfully saved assessment, lead, and reports to Supabase CRM");
       } catch (e: any) {
         console.error("Failed to save to Supabase CRM:", e?.message || e?.details || e);
+        errorsToReport.push(`Failed to save to Supabase CRM: ${e?.message || e}`);
+      }
+
+      if (errorsToReport.length > 0) {
+        setSaveErrors(errorsToReport);
       }
     };
 
@@ -209,6 +274,21 @@ export default function ResultDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full" ref={reportRef}>
+        {saveErrors.length > 0 && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <h4 className="font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Database Submission Warning
+            </h4>
+            <p className="text-red-400/90 text-xs">Some records could not be saved to the CRM database due to schema limits. The system will continue, but please notify support.</p>
+            <ul className="list-disc list-inside space-y-1 text-red-400 text-xs mt-1">
+              {saveErrors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {activeTab === "Overview" && <OverviewTab metrics={metrics} user={userDetails} answers={answers} />}
         {activeTab === "Retirement" && <RetirementTab user={userDetails} answers={answers} />}
         {activeTab === "Goals" && <GoalsTab user={userDetails} answers={answers} />}

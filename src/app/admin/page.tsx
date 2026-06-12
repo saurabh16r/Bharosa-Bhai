@@ -16,6 +16,7 @@ export default function AdminDashboardOverview() {
 
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -56,12 +57,34 @@ export default function AdminDashboardOverview() {
            fetchDashboardData();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'financial_reports' },
+        (payload) => {
+           console.log('Realtime Update: financial_reports', payload);
+           fetchDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pdf_reports' },
+        (payload) => {
+           console.log('Realtime Update: pdf_reports', payload);
+           fetchDashboardData();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -110,40 +133,63 @@ export default function AdminDashboardOverview() {
         avg = Math.round(sum / scores.length);
       }
 
+      // Query leads count specifically
+      let leadsCount = usersCount || 0;
+      try {
+        const { count: lCount, error: lError } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true });
+        if (!lError && lCount !== null) {
+          leadsCount = lCount;
+        }
+      } catch (err) {
+        console.warn("Could not fetch count from leads table, using users fallback", err);
+      }
+
+      // Query financial reports count specifically
+      let reportsCount = testsCount || 0;
+      try {
+        const { count: rCount, error: rError } = await supabase
+          .from('financial_reports')
+          .select('*', { count: 'exact', head: true });
+        if (!rError && rCount !== null) {
+          reportsCount = rCount;
+        }
+      } catch (err) {
+        console.warn("Could not fetch count from financial_reports, using test_results fallback", err);
+      }
+
       setStats({
-        totalLeads: usersCount || 0,
+        totalLeads: leadsCount,
         testsCompleted: testsCount || 0,
         avgScore: avg,
         callsBooked: callsCount || 0,
-        reportsGenerated: testsCount || 0 // Assuming 1 PDF per test
+        reportsGenerated: reportsCount
       });
 
       setRecentLeads(users || []);
 
     } catch (err: any) {
-      console.error("Supabase connection health check failed:", err);
+      const rawErrorMsg = err?.message || err?.details || String(err);
+      console.error("Failed to fetch admin data:", rawErrorMsg);
       setDbConnected(false);
       
-      // Step 10: Parse and display actual error message
-      let rawError = "Unknown connection error";
-      if (err) {
-        rawError = err.message || err.details || (typeof err === "string" ? err : JSON.stringify(err));
-      }
-
       // Map to descriptive debugging messages
-      let mappedError = rawError;
+      let mappedError = "Failed to fetch admin data";
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        mappedError = "Missing NEXT_PUBLIC_SUPABASE_URL";
+        mappedError = "Failed to fetch admin data: Missing NEXT_PUBLIC_SUPABASE_URL";
       } else if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        mappedError = "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY";
-      } else if (rawError.includes("Could not find the table") || rawError.includes("relation \"users\" does not exist")) {
-        mappedError = "Users table not found";
-      } else if (rawError.includes("Invalid API key") || rawError.includes("invalid JWT") || rawError.includes("JWT") || rawError.includes("Invalid token")) {
-        mappedError = "Supabase authentication failed / Invalid API Key";
-      } else if (rawError.includes("permission denied") || rawError.includes("policy") || rawError.includes("Row Level Security")) {
-        mappedError = "RLS policy blocking access";
-      } else if (rawError.includes("fetch failed") || rawError.includes("ENOTFOUND") || rawError.includes("Network Error")) {
-        mappedError = "Network Error (Cannot connect to Supabase)";
+        mappedError = "Failed to fetch admin data: Missing NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      } else if (rawErrorMsg.includes("Could not find the table") || rawErrorMsg.includes("relation \"users\" does not exist")) {
+        mappedError = "Failed to fetch admin data: Users table not found";
+      } else if (rawErrorMsg.includes("Invalid API key") || rawErrorMsg.includes("invalid JWT") || rawErrorMsg.includes("JWT") || rawErrorMsg.includes("Invalid token")) {
+        mappedError = "Failed to fetch admin data: Supabase authentication failed / Invalid API Key";
+      } else if (rawErrorMsg.includes("permission denied") || rawErrorMsg.includes("policy") || rawErrorMsg.includes("Row Level Security")) {
+        mappedError = "Failed to fetch admin data: RLS policy blocking access";
+      } else if (rawErrorMsg.includes("fetch failed") || rawErrorMsg.includes("ENOTFOUND") || rawErrorMsg.includes("Network Error")) {
+        mappedError = "Failed to fetch admin data: Network Error (Cannot connect to Supabase)";
+      } else {
+        mappedError = `Failed to fetch admin data: ${rawErrorMsg}`;
       }
 
       setDbError(mappedError);
@@ -163,26 +209,45 @@ export default function AdminDashboardOverview() {
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="mb-8 flex justify-between items-end">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">Platform Overview</h1>
           <p className="text-[#B5B5B5]">Real-time performance metrics and CRM insights.</p>
         </div>
-        {!loading && !dbConnected && (
-          <div className="bg-red-500/10 border border-red-500/20 px-4 py-2 rounded text-red-500 text-sm font-bold flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              🔴 Database Disconnected
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing || loading}
+            className="flex items-center gap-2 bg-[#121212] hover:bg-white/[0.04] border border-[rgba(255,255,255,0.08)] text-white px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <svg 
+              className={`w-4 h-4 text-[#B5B5B5] ${refreshing ? 'animate-spin text-[#F7B500]' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3m0 0l3 3m-3-3v8" />
+            </svg>
+            {refreshing ? 'Refreshing...' : 'Refresh Dashboard'}
+          </button>
+
+          {!loading && !dbConnected && (
+            <div className="bg-red-500/10 border border-red-500/20 px-4 py-2 rounded text-red-500 text-sm font-bold flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                🔴 Database Disconnected
+              </div>
+              <span className="text-xs font-semibold text-red-400/80">{dbError || "Unknown connection error"}</span>
             </div>
-            <span className="text-xs font-semibold text-red-400/80">{dbError || "Unknown connection error"}</span>
-          </div>
-        )}
-        {!loading && dbConnected && (
-          <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded text-green-500 text-sm font-bold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            🟢 Database Connected
-          </div>
-        )}
+          )}
+          {!loading && dbConnected && (
+            <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded text-green-500 text-sm font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              🟢 Database Connected
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Metrics */}

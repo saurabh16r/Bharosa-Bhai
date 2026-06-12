@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase, isDemoMode } from "@/lib/supabase";
-import { LayoutDashboard, Users, PhoneCall, BarChart3, Settings, LogOut, ShieldCheck, X } from "lucide-react";
+import { LayoutDashboard, Users, PhoneCall, BarChart3, Settings, LogOut, ShieldCheck, X, Bug } from "lucide-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -82,6 +82,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { label: "Discovery Calls", href: "/admin/calls", icon: <PhoneCall size={20} /> },
     { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={20} /> },
     { label: "Settings", href: "/admin/settings", icon: <Settings size={20} /> },
+    { label: "System Debug", href: "/admin/debug", icon: <Bug size={20} /> },
   ];
 
   const SidebarContent = () => (

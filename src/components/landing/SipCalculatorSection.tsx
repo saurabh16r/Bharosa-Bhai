@@ -40,6 +40,8 @@ export function SipCalculatorSection() {
   const total = results.futureValue;
   const investedPercent = Math.round((results.investedAmount / total) * 100) || 0;
   const returnPercent = 100 - investedPercent;
+  const multiplier = (results.futureValue / results.investedAmount).toFixed(1);
+  const totalReturnPercent = Math.round(((results.futureValue - results.investedAmount) / results.investedAmount) * 100);
 
   return (
     <section className="py-24 bg-[#F9FAFB] text-[#121212] overflow-hidden">
@@ -182,8 +184,8 @@ export function SipCalculatorSection() {
             </div>
 
             {/* Circular Ring and Percentage Chart */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 pt-6 border-t border-gray-100 mt-6 sm:mt-0 text-center sm:text-left">
-              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center mx-auto sm:mx-0">
+            <div className="flex flex-col sm:flex-row items-center gap-6 pt-6 border-t border-gray-100 mt-6 sm:mt-0">
+              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     className="text-gray-100"
@@ -207,19 +209,36 @@ export function SipCalculatorSection() {
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Returns</span>
-                  <span className="text-base font-black text-[#FF9F1A]">{returnPercent}%</span>
+                  <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider">Growth</span>
+                  <span className="text-sm font-black text-[#FF9F1A]">{multiplier}x</span>
                 </div>
               </div>
               
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-[#555555]">
-                  <div className="w-3 h-3 rounded bg-gray-200 shrink-0" />
-                  <span>Your Principal Investment ({investedPercent}%)</span>
+              <div className="space-y-3 flex-1 w-full text-left">
+                <div className="flex items-center justify-between gap-4 text-xs font-bold text-[#555555]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-gray-200 shrink-0" />
+                    <span>Principal Investment ({investedPercent}%)</span>
+                  </div>
+                  <span className="font-extrabold text-[#121212]">{formatCurrency(results.investedAmount)}</span>
                 </div>
-                <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-[#FF9F1A]">
-                  <div className="w-3 h-3 rounded bg-[#FF9F1A] shrink-0" />
-                  <span>Compounded Interest Wealth Gained ({returnPercent}%)</span>
+                
+                <div className="flex items-center justify-between gap-4 text-xs font-bold text-[#FF9F1A]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#FF9F1A] shrink-0" />
+                    <span>Wealth Created ({returnPercent}%)</span>
+                  </div>
+                  <span className="font-extrabold">{formatCurrency(results.estimatedReturns)}</span>
+                </div>
+
+                <div className="border-t border-dashed border-gray-200 pt-2 flex items-center justify-between gap-4 text-xs font-bold text-[#22C55E]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#22C55E]/20 border border-[#22C55E] shrink-0" />
+                    <span>Total Performance</span>
+                  </div>
+                  <span className="font-black text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded">
+                    {multiplier}x Wealth Created (+{totalReturnPercent}% Return)
+                  </span>
                 </div>
               </div>
             </div>

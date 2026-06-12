@@ -4,6 +4,46 @@ import * as React from "react";
 import { Card } from "@/components/ui/Card";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const invested = data.Invested;
+    const value = data.Value;
+    const returns = value - invested;
+    const returnPct = invested > 0 ? Math.round((returns / invested) * 100) : 0;
+    const multiple = invested > 0 ? (value / invested).toFixed(1) : "1.0";
+
+    return (
+      <div className="bg-[#171717] border border-[rgba(255,255,255,0.08)] p-4 rounded-xl shadow-xl font-sans text-xs space-y-2 text-white">
+        <p className="font-bold text-[#B5B5B5] border-b border-white/5 pb-1 mb-1">{data.year}</p>
+        <div className="flex justify-between gap-6">
+          <span className="text-[#B5B5B5]">Invested Amount:</span>
+          <span className="font-bold text-white">₹{invested.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="flex justify-between gap-6">
+          <span className="text-[#1E88FF]">Wealth Generated:</span>
+          <span className="font-bold text-[#1E88FF]">₹{returns.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="flex justify-between gap-6">
+          <span className="text-[#F7B500]">Total Value:</span>
+          <span className="font-bold text-white">₹{value.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="border-t border-white/5 pt-1.5 mt-1 space-y-1">
+          <div className="flex justify-between gap-6 text-[#22C55E]">
+            <span>Return %:</span>
+            <span className="font-bold">+{returnPct}%</span>
+          </div>
+          <div className="flex justify-between gap-6 text-[#22C55E]">
+            <span>Wealth Multiple:</span>
+            <span className="font-bold">{multiple}x</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function SIPCalculatorPage() {
   const [monthlySip, setMonthlySip] = React.useState(5000);
   const [returnRate, setReturnRate] = React.useState(12);
@@ -40,6 +80,8 @@ export default function SIPCalculatorPage() {
   };
 
   const results = calculateSIP();
+  const multiplier = (results.futureValue / results.investedAmount).toFixed(1);
+  const totalReturnPercent = Math.round(((results.futureValue - results.investedAmount) / results.investedAmount) * 100);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -113,20 +155,22 @@ export default function SIPCalculatorPage() {
 
           {/* Results & Chart */}
           <div className="lg:col-span-8 flex flex-col gap-6">
-            
-            {/* Top Stat Cards */}
+                {/* Top Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="p-6 bg-[#171717]/50 border-t-2 border-t-[#B5B5B5]">
                 <p className="text-sm text-[#B5B5B5] mb-2">Invested Amount</p>
                 <p className="text-2xl font-bold text-white">{formatCurrency(results.investedAmount)}</p>
+                <p className="text-xs text-[#B5B5B5]/60 mt-1">Principal Capital</p>
               </Card>
               <Card className="p-6 bg-[#1E88FF]/10 border-t-2 border-t-[#1E88FF]">
                 <p className="text-sm text-[#B5B5B5] mb-2">Estimated Returns</p>
                 <p className="text-2xl font-bold text-[#1E88FF]">{formatCurrency(results.estimatedReturns)}</p>
+                <p className="text-xs text-[#22C55E] mt-1 font-semibold">+{totalReturnPercent}% Total Return</p>
               </Card>
               <Card className="p-6 bg-[#F7B500]/10 border-t-2 border-t-[#F7B500] glow-primary">
                 <p className="text-sm text-[#F7B500] mb-2">Total Value</p>
                 <p className="text-3xl font-bold text-white font-heading">{formatCurrency(results.futureValue)}</p>
+                <p className="text-xs text-[#F7B500] mt-1 font-semibold">{multiplier}x Wealth Created</p>
               </Card>
             </div>
 
@@ -148,11 +192,7 @@ export default function SIPCalculatorPage() {
                     </defs>
                     <XAxis dataKey="year" stroke="#B5B5B5" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#B5B5B5" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${(val/100000).toFixed(1)}L`} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#171717', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff' }}
-                      itemStyle={{ color: '#fff' }}
-                      formatter={(value) => formatCurrency(Number(value || 0))}
-                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="Value" stroke="#F7B500" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
                     <Area type="monotone" dataKey="Invested" stroke="#B5B5B5" strokeWidth={2} fillOpacity={1} fill="url(#colorInv)" />
                   </AreaChart>
